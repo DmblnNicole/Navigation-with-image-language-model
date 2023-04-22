@@ -3,3 +3,5 @@
 /checkpoints
 .DS_Store
 /segments
+*__pycache__*
+*.pyc

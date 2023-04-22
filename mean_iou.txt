@@ -1,0 +1,15 @@
+01 Metrics for mask_path and ground truth pairs of hike dataset: {'mean_iou': 0.5152979076046429, 'mean_accuracy': 0.6955649569023796, 'overall_accuracy': 0.708671420957984, 'per_category_iou': array([0.64271412, 0.38788169]), 'per_category_accuracy': array([0.72496738, 0.66616253])}
+
+02 Metrics for mask_combined and ground truth pairs of hike dataset: {'mean_iou': 0.4830478272350655, 'mean_accuracy': 0.6335583899162717, 'overall_accuracy': 0.7030725060439691, 'per_category_iou': array([0.65777728, 0.30831837]), 'per_category_accuracy': array([0.78950307, 0.47761371])}
+
+03 Metrics for mask_refined (SD with mask_combined) and ground truth pairs of hike dataset: {'mean_iou': 0.6108924448326863, 'mean_accuracy': 0.7179468795395977, 'overall_accuracy': 0.820324167391149, 'per_category_iou': array([0.79220747, 0.42957742]), 'per_category_accuracy': array([0.94761525, 0.48827851])}
+        self.data_path = './hike'
+        self.word_mask_obstacle = 'A dull photo of bulky or voluminous obstacles that are bigger than 50 centimeters'
+        self.word_mask_path_1 = 'A dull photo of a path through the grass'
+        self.word_mask_path_2 = 'A dull photo of a road to walk on'
+        self.prompt = 'A bright picture of a narrow footpath to walk on'
+
+04 Metrics for mask_refined (SD with mask_path) and ground truth pairs of hike dataset: {'mean_iou': 0.6316060729234714, 'mean_accuracy': 0.7429549721132012, 'overall_accuracy': 0.8254415372522866, 'per_category_iou': array([0.79351792, 0.46969423]), 'per_category_accuracy': array([0.92800144, 0.55790851])}
+
+05 Metrics for mask_refined (SD with mask_combined and seed) and ground truth pairs of hike dataset: {'mean_iou': 0.6098819740855447, 'mean_accuracy': 0.7187820954330542, 'overall_accuracy': 0.8182630399378334, 'per_category_iou': array([0.78932872, 0.43043523]), 'per_category_accuracy': array([0.94195295, 0.49561124])}
+06 Metrics for mask_refined (SD with mask_path and seed) and ground truth pairs of hike dataset: {'mean_iou': 0.6093676288650018, 'mean_accuracy': 0.7289659307775103, 'overall_accuracy': 0.8092922303734756, 'per_category_iou': array([0.77508925, 0.44364601]), 'per_category_accuracy': array([0.90916616, 0.5487657 ])}

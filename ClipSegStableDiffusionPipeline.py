@@ -30,7 +30,7 @@ class ClipSegStableDiffusionPipeline():
         self.initClipSeg()
         self.initStableDiffusionInpainting()
     
-        self.data_path = './hike'
+        self.data_path = './youtube'
         self.word_mask_obstacle = 'A dull photo of bulky or voluminous obstacles that are bigger than 50 centimeters'
         self.word_mask_path_1 = 'A dull photo of a path through the grass'
         self.word_mask_path_2 = 'A dull photo of a road to walk on'
@@ -80,12 +80,28 @@ class ClipSegStableDiffusionPipeline():
         os.remove(filename)
         return mask, init_image
 
+    def generateLatents(self):
+        """ Generate latent codes with random sequence fixed with seed to reproduce stable diffusion outputs.
+            Adapted from https://github.com/pcuenca/diffusers-examples/blob/main/notebooks/stable-diffusion-seeds.ipynb """
+        device = "cuda"
+        generator = torch.Generator(device=device)
+        seed = 42
+        # same sequence of random numbers is generated every time the code is run
+        generator.manual_seed(seed)
+        latents = torch.randn(
+            # values in the tensor are drawn from a normal distribution with mean 0 and standard deviation 1
+            # using the torch.Generator object with fixed seed 42
+            (1, 4, 512 // 8, 512 // 8),
+            generator = generator,
+            device = device)
+        return latents
+        
 
     def promptStableDiffusionInpainting(self, prompt, image, clipseg_mask):
         """ Fill masked out region of 'image' with content based on 'prompt' """
         if prompt != None:
             with autocast("cuda"):
-                output = self.diffusion_model(prompt=prompt, image=image, mask_image=clipseg_mask)
+                output = self.diffusion_model(prompt=prompt, image=image, mask_image=clipseg_mask,latents=self.generateLatents())
         else:
             output = None
         return output
@@ -124,7 +140,7 @@ class ClipSegStableDiffusionPipeline():
             - prompt stable diffusion with image, combined mask and prompt
             - prompt clipseg with stable diffusion output and prompt """
             
-        print(f'mask : {self.word_mask_path_1}, number : {i}')
+
         image = Image.open(os.path.join(self.data_path,file))
         # prompt clipseg
         mask_path, init_image = self.promptClipSeg(image=image, word_mask=self.word_mask_path_1)
@@ -132,11 +148,11 @@ class ClipSegStableDiffusionPipeline():
         # add obstacle and path masks
         combined_mask = self.combineObstacleAndPathMasks(mask_path=mask_path, mask_obstacle=mask_obstacle)
         # prompt SD inpainting
-        stable_diffusion_output = self.promptStableDiffusionInpainting(prompt=self.prompt, image=init_image, clipseg_mask=combined_mask)
+        stable_diffusion_output = self.promptStableDiffusionInpainting(prompt=self.prompt, image=init_image, clipseg_mask=mask_path)
         stable_diffusion_output = stable_diffusion_output.images[0]
         # prompt clipseg
         refined_mask_path, _ = self.promptClipSeg(image=stable_diffusion_output, word_mask=self.prompt)       
-        return mask_path, mask_obstacle, combined_mask, refined_mask_path, stable_diffusion_output
+        return mask_path, mask_obstacle, combined_mask, refined_mask_path, stable_diffusion_output, init_image
     
     
     def saveImage(self, image, filename, images_dir):
@@ -161,7 +177,7 @@ class ClipSegStableDiffusionPipeline():
             
     
     def saveImageAndMasks(self, init_image, mask, stable_diffusion_output, refined_mask_path, images_dir, filename):
-        masked_image = masked_image = cv2.add(np.asarray(init_image), np.asarray(refined_mask_path))
+        masked_image = cv2.add(np.asarray(init_image), np.asarray(refined_mask_path))
         plt.figure(figsize=(12,12))
         plt.subplot(2,2,1)
         plt.title('Initial Image')
@@ -179,19 +195,20 @@ class ClipSegStableDiffusionPipeline():
     
 
 
-pipeline = ClipSegStableDiffusionPipeline()
-files = pipeline.loadData()
-for i, file in enumerate(files):
-    mask_path, mask_obstacle, combined_mask, refined_mask_path, stable_diffusion_output = pipeline.forwardPass(file)
-    # save combined_mask
-    pipeline.saveImage(combined_mask,file, './processed_hike/combined_mask')
-    # save mask_path
-    pipeline.saveImage(mask_path,file, './processed_hike/mask_path')
-    # save mask_obstacle
-    pipeline.saveImage(mask_obstacle,file, './processed_hike/mask_obstacle')
-    # save refined_mask
-    pipeline.saveImage(refined_mask_path,file, './processed_hike/refined_mask')
-    # save stable diffusion output
-    pipeline.saveImage(stable_diffusion_output,file, './processed_hike/stable_diffusion_output')
+#pipeline = ClipSegStableDiffusionPipeline()
+#files = pipeline.loadData()
+#for i, file in enumerate(files):
+#    print(f'mask : {pipeline.word_mask_path_1}, number : {i}')
+#    mask_path, mask_obstacle, combined_mask, refined_mask_path, stable_diffusion_output,_ = pipeline.forwardPass(file)
+#    # save combined_mask
+#    pipeline.saveImage(combined_mask,file, './processed_hike/combined_mask')
+#    # save mask_path
+#    pipeline.saveImage(mask_path,file, './processed_hike/mask_path')
+#    # save mask_obstacle
+#    pipeline.saveImage(mask_obstacle,file, './processed_hike/mask_obstacle')
+#    # save refined_mask
+#    pipeline.saveImage(refined_mask_path,file, './processed_hike/refined_mask')
+#    # save stable diffusion output
+#    pipeline.saveImage(stable_diffusion_output,file, './processed_hike/stable_diffusion_output')
     
     
