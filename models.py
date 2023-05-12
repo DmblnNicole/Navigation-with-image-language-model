@@ -93,21 +93,11 @@ class ClipSegBase():
 class ClipSegSD(ClipSegBase):
     def __init__(self, data_path: str, word_mask: str, sd_prompt : str, obstacle_prompt : str) -> None:
         super().__init__(data_path, word_mask)
-    
-        # self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        # sam = sam_model_registry["vit_h"](checkpoint='checkpoints/sam_vit_h_4b8939.pth').to(self.device)
-        # self.sam = SamPredictor(sam)
-        # print(self.device)
-        # self.initClipSeg()
+
         self.initStableDiffusionInpainting()
         self.word_mask = word_mask
         self.obstacle_prompt = obstacle_prompt
         self.sd_prompt = sd_prompt
-        # self.data_path = './youtube'
-        # self.word_mask_obstacle = 'A dull photo of bulky or voluminous obstacles that are bigger than 50 centimeters'
-        # self.word_mask_path_1 = 'A dull photo of a path through the grass'
-        # self.word_mask_path_2 = 'A bright picture of a road to walk on'
-        # self.prompt = 'A bright picture of a narrow footpath to walk on'
     
     
     def initStableDiffusionInpainting(self):
@@ -145,14 +135,15 @@ class ClipSegSD(ClipSegBase):
     
     def combineObstacleAndPathMasks(self, mask_obstacle, mask_path):
         """ Adds 'mask_obstacle' and 'mask_path' to get a combined masked of traversable area """
+
         mask_obstacle = np.asarray(mask_obstacle)
         mask_path = np.asarray(mask_path)
         mask = np.copy(mask_path)
-
         white_path_pixels = (mask_path == [255,255,255]).all(axis=2)
         white_obstacle_pixels = (mask_obstacle == [255,255,255]).all(axis=2)
         mask[white_path_pixels & white_obstacle_pixels] = [0,0,0]
         combined_mask = Image.fromarray(np.uint8(mask)).convert('RGB')
+
         return combined_mask
            
     
@@ -163,48 +154,15 @@ class ClipSegSD(ClipSegBase):
             - combine both masks
             - prompt stable diffusion with image, combined mask and prompt
             - prompt clipseg with stable diffusion output and prompt """
-            
-
+        
         image = Image.open(os.path.join(self.data_path,file))
-        
-        # transform = transforms.Resize((512,512,3))
-        # sam_image = transform(image)
-        # # print(image.shape)
-        # sam_image = sam_image.detach().cpu().numpy().astype(np.uint8)
-        
-        # prompt clipseg
-        # self.sam.set_image(np.asarray(init_image))
-
-        # positive_slice = np.argwhere(np.asarray(mask_path)[:,:,0] != 0)
-        # positive_slice[:,1] = 512 - positive_slice[:,1]
-        # # ind = int(np.random.uniform(low=0, high=len(positive_slice)))
-        # point = np.array([np.mean(positive_slice, axis=0)]).astype(np.uint8)
-        # # point = np.array([positive_slice[ind,:]])
-        # print(np.asarray(mask_path).shape)
-        # # point = [np]
-        
-        # print(point)
-        # # point[0,1] = 512 - point[0,1]
-        # # point[0,0] = 512 - point[0,0]
-        # print(point)
-        # mask_path, _, _ = self.sam.predict(
-        #     point_coords=point,
-        #     point_labels=[1],
-        #     multimask_output=False
-        # )
-        # print(mask_path[0].shape)
-        # mask_path = bitmap2image(mask_path[0])
-        
         mask_path, init_image = self.promptClipSeg(image=image, word_mask=self.word_mask)
         mask_obstacle, _ = self.promptClipSeg(image=image, word_mask=self.obstacle_prompt)
-        # add obstacle and path masks
         combined_mask = self.combineObstacleAndPathMasks(mask_path=mask_path, mask_obstacle=mask_obstacle)
-            
-        # prompt SD inpainting
         stable_diffusion_output = self.promptStableDiffusionInpainting(prompt=self.sd_prompt, image=init_image, clipseg_mask=combined_mask)
         stable_diffusion_output = stable_diffusion_output.images[0]
-        # prompt clipseg
-        refined_mask_path, _ = self.promptClipSeg(image=stable_diffusion_output, word_mask=self.sd_prompt)       
+        refined_mask_path, _ = self.promptClipSeg(image=stable_diffusion_output, word_mask=self.sd_prompt)    
+          
         return mask_path, mask_obstacle, combined_mask, refined_mask_path, stable_diffusion_output, init_image
 
     def saveMasks(self, mask_path, mask_obstacle, combined_mask, refined_mask_path, images_dir, filename):
@@ -242,28 +200,30 @@ class ClipSegSD(ClipSegBase):
         plt.savefig(f"{images_dir}/{filename}")
     
 
-class ClipSegSAM():
-    def __init__(self):
+class ClipSegSAM(ClipSegBase):
+    def __init__(self, data_path: str, word_mask: str) -> None:
+        super().__init__(data_path, word_mask)
+        sam = sam_model_registry["vit_h"](checkpoint='checkpoints/sam_vit_h_4b8939.pth').to(self.device)
+        self.sam = SamPredictor(sam)
+
+    def sample_points(self):
         pass
-
-    def forward(self):
-        pass
-
-
-#pipeline = ClipSegStableDiffusionPipeline()
-#files = pipeline.loadData()
-#for i, file in enumerate(files):
-#    print(f'mask : {pipeline.word_mask_path_1}, number : {i}')
-#    mask_path, mask_obstacle, combined_mask, refined_mask_path, stable_diffusion_output,_ = pipeline.forwardPass(file)
-#    # save combined_mask
-#    pipeline.saveImage(combined_mask,file, './processed_hike/combined_mask')
-#    # save mask_path
-#    pipeline.saveImage(mask_path,file, './processed_hike/mask_path')
-#    # save mask_obstacle
-#    pipeline.saveImage(mask_obstacle,file, './processed_hike/mask_obstacle')
-#    # save refined_mask
-#    pipeline.saveImage(refined_mask_path,file, './processed_hike/refined_mask')
-#    # save stable diffusion output
-#    pipeline.saveImage(stable_diffusion_output,file, './processed_hike/stable_diffusion_output')
+        
+    def forwardPass(self, file):
+        image = Image.open(os.path.join(self.data_path,file))
+        mask_path, init_image = self.promptClipSeg(image=image, word_mask=self.word_mask)
+        self.sam.set_image(np.asarray(init_image))
+        # ind = int(np.random.uniform(low=0, high=len(positive_slice)))
+        positive_slice = np.argwhere(np.asarray(mask_path)[:,:,0] != 0)
+        positive_slice[:,1] = 512 - positive_slice[:,1]
+        point = np.array([np.mean(positive_slice, axis=0)]).astype(np.uint8)
+        print(point)
+        mask_path, _, _ = self.sam.predict(
+            point_coords=point,
+            point_labels=[1],
+            multimask_output=False
+        )
+        sam_mask = bitmap2image(mask_path[0])
+        return init_image, mask_path, sam_mask
     
     

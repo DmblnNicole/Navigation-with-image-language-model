@@ -8,7 +8,8 @@ from PIL import Image
 from models import ClipSegSD
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
-from utils import show_mask, combine, image2bitmap, get_GTmask_from_filename, compute_metric, save_metric_for_one_pair, save_metric_for_one_pair_with_SD_output
+from utils import show_mask, combine, image2bitmap, get_GTmask_from_filename, \
+    compute_metric, save_metric_for_one_pair, save_metric_for_one_pair_with_SD_output
 
 def main():
     pipeline =  ClipSegSD(
