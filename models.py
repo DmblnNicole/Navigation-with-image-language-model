@@ -19,47 +19,25 @@ from torch import autocast
 from torchvision import transforms
 from segment_anything import sam_model_registry, SamPredictor
 from clipseg.models.clipseg import CLIPDensePredT
+from utils import bitmap2image
 
-def bitmap2image(semantic_bitmap) -> Image:
-    A = np.asarray(semantic_bitmap, dtype=np.uint8)
-    image = np.zeros((A.shape[0], A.shape[1], 3), dtype=np.uint8)
-    image[:,:,0] = A*255
-    image[:,:,1] = A*255
-    image[:,:,2] = A*255
-    image = Image.fromarray(image, 'RGB')
-    return image
+class ClipSegBase():
 
-class Pipeline():
-    
-    def __init__(self):
+    """
+    Base Class template for adding more models into clipseg pipeline
+    """
+
+    def __init__(self, data_path : str, word_mask : str) -> None:
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        sam = sam_model_registry["vit_h"](checkpoint='checkpoints/sam_vit_h_4b8939.pth').to(self.device)
-        self.sam = SamPredictor(sam)
-        print(self.device)
-        self.initClipSeg()
-        self.initStableDiffusionInpainting()
-        
-        self.data_path = './youtube'
-        self.word_mask_obstacle = 'A dull photo of bulky or voluminous obstacles that are bigger than 50 centimeters'
-        self.word_mask_path_1 = 'A dull photo of a path through the grass'
-        self.word_mask_path_2 = 'A bright picture of a road to walk on'
-        self.prompt = 'A bright picture of a narrow footpath to walk on'
-        
+        self.data_path = data_path
+        self.word_mask = word_mask
+        self.initClipseg()
     
-    def initClipSeg(self):
+    def initClipseg(self):
         """ Initialize pretrained clipseg model """
         self.clipseg_model = CLIPDensePredT(version='ViT-B/16', reduce_dim=64)
         self.clipseg_model.eval()
         self.clipseg_model.load_state_dict(torch.load('weights/rd64-uni.pth', map_location=torch.device('cuda')), strict=False)
-    
-    
-    def initStableDiffusionInpainting(self):
-        """ Initialize pretrained stable diffusion inpainting model """
-        self.diffusion_model = DiffusionPipeline.from_pretrained(
-                    "runwayml/stable-diffusion-inpainting",
-                    revision="fp16",
-                    torch_dtype=torch.float16,).to(self.device)
-            
     
     def preprocess(self):
         """ Preprocess image for ClipSeg"""
@@ -69,7 +47,6 @@ class Pipeline():
                     transforms.Resize((512, 512)),
                     ])
         return transform
-        
     
     def promptClipSeg(self, image, word_mask):
         """ Extract binary mask from 'image' based off 'word_mask' """
@@ -88,6 +65,57 @@ class Pipeline():
         mask = Image.fromarray(np.uint8(bw_image)).convert('RGB')
         os.remove(filename)
         return mask, init_image
+    
+    def preprocess(self):
+        """ Preprocess image for ClipSeg"""
+        transform = transforms.Compose([
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                    transforms.Resize((512, 512)),
+                    ])
+        return transform
+
+    def loadData(self):
+        """ Load image data to pass through ClipSeg"""
+
+        files = os.listdir(self.data_path)
+        re_pattern = re.compile('.+?(\d+)\.([a-zA-Z0-9+])')
+        try:
+            files = sorted(files, key=lambda x: str(re_pattern.match(x).group()))
+        except AttributeError:
+            files = sorted(files, key=lambda x: str(re_pattern.match(x)))
+        return files
+    
+    def saveImage(self, image, filename, images_dir):
+        cv2.imwrite(os.path.join(images_dir, filename), np.asarray(image))
+    
+
+class ClipSegSD(ClipSegBase):
+    def __init__(self, data_path: str, word_mask: str, sd_prompt : str, obstacle_prompt : str) -> None:
+        super().__init__(data_path, word_mask)
+    
+        # self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        # sam = sam_model_registry["vit_h"](checkpoint='checkpoints/sam_vit_h_4b8939.pth').to(self.device)
+        # self.sam = SamPredictor(sam)
+        # print(self.device)
+        # self.initClipSeg()
+        self.initStableDiffusionInpainting()
+        self.word_mask = word_mask
+        self.obstacle_prompt = obstacle_prompt
+        self.sd_prompt = sd_prompt
+        # self.data_path = './youtube'
+        # self.word_mask_obstacle = 'A dull photo of bulky or voluminous obstacles that are bigger than 50 centimeters'
+        # self.word_mask_path_1 = 'A dull photo of a path through the grass'
+        # self.word_mask_path_2 = 'A bright picture of a road to walk on'
+        # self.prompt = 'A bright picture of a narrow footpath to walk on'
+    
+    
+    def initStableDiffusionInpainting(self):
+        """ Initialize pretrained stable diffusion inpainting model """
+        self.diffusion_model = DiffusionPipeline.from_pretrained(
+                    "runwayml/stable-diffusion-inpainting",
+                    revision="fp16",
+                    torch_dtype=torch.float16,).to(self.device)
 
     def generateLatents(self):
         """ Generate latent codes with random sequence fixed with seed to reproduce stable diffusion outputs.
@@ -114,19 +142,6 @@ class Pipeline():
         else:
             output = None
         return output
-
-    
-    def loadData(self):
-        """ Load image data to pass through ClipSeg and Stable Diffusion """
-
-        files = os.listdir(self.data_path)
-        re_pattern = re.compile('.+?(\d+)\.([a-zA-Z0-9+])')
-        try:
-            files = sorted(files, key=lambda x: str(re_pattern.match(x).group()))
-        except AttributeError:
-            files = sorted(files, key=lambda x: str(re_pattern.match(x)))
-        return files
-    
     
     def combineObstacleAndPathMasks(self, mask_obstacle, mask_path):
         """ Adds 'mask_obstacle' and 'mask_path' to get a combined masked of traversable area """
@@ -158,43 +173,39 @@ class Pipeline():
         # sam_image = sam_image.detach().cpu().numpy().astype(np.uint8)
         
         # prompt clipseg
-        mask_path, init_image = self.promptClipSeg(image=image, word_mask=self.word_mask_path_2)
-        self.sam.set_image(np.asarray(init_image))
+        # self.sam.set_image(np.asarray(init_image))
 
-        positive_slice = np.argwhere(np.asarray(mask_path)[:,:,0] != 0)
-        positive_slice[:,1] = 512 - positive_slice[:,1]
-        # ind = int(np.random.uniform(low=0, high=len(positive_slice)))
-        point = np.array([np.mean(positive_slice, axis=0)]).astype(np.uint8)
-        # point = np.array([positive_slice[ind,:]])
-        print(np.asarray(mask_path).shape)
-        # point = [np]
+        # positive_slice = np.argwhere(np.asarray(mask_path)[:,:,0] != 0)
+        # positive_slice[:,1] = 512 - positive_slice[:,1]
+        # # ind = int(np.random.uniform(low=0, high=len(positive_slice)))
+        # point = np.array([np.mean(positive_slice, axis=0)]).astype(np.uint8)
+        # # point = np.array([positive_slice[ind,:]])
+        # print(np.asarray(mask_path).shape)
+        # # point = [np]
         
-        print(point)
-        # point[0,1] = 512 - point[0,1]
-        # point[0,0] = 512 - point[0,0]
-        print(point)
-        mask_path, _, _ = self.sam.predict(
-            point_coords=point,
-            point_labels=[1],
-            multimask_output=False
-        )
+        # print(point)
+        # # point[0,1] = 512 - point[0,1]
+        # # point[0,0] = 512 - point[0,0]
+        # print(point)
+        # mask_path, _, _ = self.sam.predict(
+        #     point_coords=point,
+        #     point_labels=[1],
+        #     multimask_output=False
+        # )
         # print(mask_path[0].shape)
-        mask_path = bitmap2image(mask_path[0])
-        mask_obstacle, _ = self.promptClipSeg(image=image, word_mask=self.word_mask_obstacle)
+        # mask_path = bitmap2image(mask_path[0])
+        
+        mask_path, init_image = self.promptClipSeg(image=image, word_mask=self.word_mask)
+        mask_obstacle, _ = self.promptClipSeg(image=image, word_mask=self.obstacle_prompt)
         # add obstacle and path masks
         combined_mask = self.combineObstacleAndPathMasks(mask_path=mask_path, mask_obstacle=mask_obstacle)
             
         # prompt SD inpainting
-        stable_diffusion_output = self.promptStableDiffusionInpainting(prompt=self.prompt, image=init_image, clipseg_mask=mask_path)
+        stable_diffusion_output = self.promptStableDiffusionInpainting(prompt=self.sd_prompt, image=init_image, clipseg_mask=combined_mask)
         stable_diffusion_output = stable_diffusion_output.images[0]
         # prompt clipseg
-        refined_mask_path, _ = self.promptClipSeg(image=stable_diffusion_output, word_mask=self.prompt)       
+        refined_mask_path, _ = self.promptClipSeg(image=stable_diffusion_output, word_mask=self.sd_prompt)       
         return mask_path, mask_obstacle, combined_mask, refined_mask_path, stable_diffusion_output, init_image
-    
-
-    def saveImage(self, image, filename, images_dir):
-        cv2.imwrite(os.path.join(images_dir, filename), np.asarray(image))
-    
 
     def saveMasks(self, mask_path, mask_obstacle, combined_mask, refined_mask_path, images_dir, filename):
         plt.figure(figsize=(12,12))
@@ -230,6 +241,13 @@ class Pipeline():
         plt.imshow(masked_image)
         plt.savefig(f"{images_dir}/{filename}")
     
+
+class ClipSegSAM():
+    def __init__(self):
+        pass
+
+    def forward(self):
+        pass
 
 
 #pipeline = ClipSegStableDiffusionPipeline()
