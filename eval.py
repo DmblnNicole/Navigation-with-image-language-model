@@ -5,6 +5,7 @@ from torchvision import transforms
 import numpy as np
 import timeit
 from PIL import Image
+from tqdm import tqdm
 from models import ClipSegSD, ClipSegSAM
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -24,7 +25,7 @@ def main(mode : str):
         images_dir = './processed_hike/testing_new_pipeline_structure'
 
         #compute metric for single mask/ground_truth pairs
-        for i, file in enumerate(files):
+        for file in tqdm(files):
             mask_path, mask_obstacle, mask_combined, mask_refined, stable_diffusion_output, init_image = pipeline(file)
             metric_for_one_pair = compute_metric([mask_refined], [file])
             save_metric_for_one_pair_with_SD_output(file, init_image, stable_diffusion_output, mask_refined, metric_for_one_pair, title='mask_refined', images_dir=images_dir)
@@ -35,14 +36,15 @@ def main(mode : str):
     elif 'sam':
         pipeline = ClipSegSAM(
             data_path='hike/road',
-            word_mask='A bright photo of a road to walk on'
+            word_mask='A bright photo of a road to walk on',
+            obstacle_prompt='A dull photo of bulky or voluminous obstacles that are bigger than 50 centimeters'
         )
         files = pipeline.loadData()
         images_dir = './processed_hike/testing_sam'
 
-        for file in files:
+        for file in tqdm(files):
             init_image, mask_path, sam_mask, coords, labels = pipeline(file)
-            out = combine(init_image, sam_mask, coords=coords, labels=labels)
+            out = combine(init_image, mask_path, sam_mask, coords=coords, labels=labels)
             out.save(f'{images_dir}/{file}')
 
 

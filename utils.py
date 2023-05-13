@@ -24,20 +24,24 @@ def show_mask(mask, ax, random_color=False):
     mask_image = mask.reshape(h, w, 1) * color.reshape(1, 1, -1)
     return mask_image
 
-def combine(image : Image, semantic_mask : Image, coords=None, labels=None) -> Image:
+def combine(image : Image, clip_mask, sam_mask=None, coords=None, labels=None) -> Image:
+    # print(type(clip_mask))
     fig = Figure()
     canvas = FigureCanvas(fig)
     ax = fig.gca()
     ax.imshow(image)
-    mask = show_mask(image2bitmap(semantic_mask, dtype=np.bool_), plt)
-    ax.imshow(mask)
+    clip_mask = show_mask(image2bitmap(clip_mask, dtype=np.bool_), plt)
+    ax.imshow(clip_mask)
+    if isinstance(sam_mask, Image.Image):
+        sam_mask = show_mask(image2bitmap(sam_mask, dtype=np.bool_), plt, random_color=True)
+        ax.imshow(sam_mask)
     ax.axis('on')
     if isinstance(coords, np.ndarray):
         # print(coords)
         pos_points = coords[labels==1]
         neg_points = coords[labels==0]
-        ax.scatter(pos_points[:, 0], pos_points[:, 1], color='green', marker='*', s=200, edgecolor='white', linewidth=1.25)
-        ax.scatter(neg_points[:, 0], neg_points[:, 1], color='red', marker='*', s=200, edgecolor='white', linewidth=1.25)   
+        ax.scatter(pos_points[:, 0], pos_points[:, 1], color='green', marker='*', s=50, linewidth=1.25)
+        ax.scatter(neg_points[:, 0], neg_points[:, 1], color='red', marker='*', s=50, linewidth=1.25)   
     canvas.draw()
     width, height = fig.get_size_inches() * fig.get_dpi() 
     img = np.frombuffer(canvas.tostring_rgb(), dtype=np.uint8).reshape(int(height), int(width), 3)

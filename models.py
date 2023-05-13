@@ -20,6 +20,7 @@ from torchvision import transforms
 from segment_anything import sam_model_registry, SamPredictor
 from clipseg.models.clipseg import CLIPDensePredT
 from utils import bitmap2image, image2bitmap
+from scipy.spatial.distance import cdist
 
 class ClipSegBase():
 
@@ -85,6 +86,17 @@ class ClipSegBase():
         except AttributeError:
             files = sorted(files, key=lambda x: str(re_pattern.match(x)))
         return files
+    
+    def combineObstacleAndPathMasks(self, mask_obstacle, mask_path):
+        """ Adds 'mask_obstacle' and 'mask_path' to get a combined masked of traversable area """
+        mask_obstacle = np.asarray(mask_obstacle)
+        mask_path = np.asarray(mask_path)
+        mask = np.copy(mask_path)
+        white_path_pixels = (mask_path == [255,255,255]).all(axis=2)
+        white_obstacle_pixels = (mask_obstacle == [255,255,255]).all(axis=2)
+        mask[white_path_pixels & white_obstacle_pixels] = [0,0,0]
+        combined_mask = Image.fromarray(np.uint8(mask)).convert('RGB')
+        return combined_mask
     
     def saveImage(self, image, filename, images_dir):
         cv2.imwrite(os.path.join(images_dir, filename), np.asarray(image))
@@ -155,17 +167,6 @@ class ClipSegSD(ClipSegBase):
         else:
             output = None
         return output
-    
-    def combineObstacleAndPathMasks(self, mask_obstacle, mask_path):
-        """ Adds 'mask_obstacle' and 'mask_path' to get a combined masked of traversable area """
-        mask_obstacle = np.asarray(mask_obstacle)
-        mask_path = np.asarray(mask_path)
-        mask = np.copy(mask_path)
-        white_path_pixels = (mask_path == [255,255,255]).all(axis=2)
-        white_obstacle_pixels = (mask_obstacle == [255,255,255]).all(axis=2)
-        mask[white_path_pixels & white_obstacle_pixels] = [0,0,0]
-        combined_mask = Image.fromarray(np.uint8(mask)).convert('RGB')
-        return combined_mask
 
     def saveMasks(self, mask_path, mask_obstacle, combined_mask, refined_mask_path, images_dir, filename):
         plt.figure(figsize=(12,12))
@@ -209,33 +210,42 @@ class ClipSegSAM(ClipSegBase):
     - sample pixel locations from the clipseg mask and pass them to segment anything
     """
 
-    def __init__(self, data_path: str, word_mask: str) -> None:
+    def __init__(self, data_path: str, word_mask: str, obstacle_prompt : str) -> None:
         super().__init__(data_path, word_mask)
         sam = sam_model_registry["vit_h"](checkpoint='checkpoints/sam_vit_h_4b8939.pth').to(self.device)
         self.sam = SamPredictor(sam)
+        self.obstacle_prompt = obstacle_prompt
         self.num_positive_points = 3
         self.num_negative_points = 6
-        
+    
     def __call__(self, file):
         image = Image.open(os.path.join(self.data_path,file))
+
         mask_path, init_image = self.promptClipSeg(image=image, word_mask=self.word_mask)
+        # mask_obstacle, _ = self.promptClipSeg(image=image, word_mask=self.obstacle_prompt)
+        # combined_mask = self.combineObstacleAndPathMasks(mask_path=mask_path, mask_obstacle=mask_obstacle)
+
         self.sam.set_image(np.asarray(init_image))
         coords, labels = self.sample_coords(mask=mask_path)
+
         mask, _, _ = self.sam.predict(
             point_coords=coords,
             point_labels=labels,
             multimask_output=False
         )
+
         sam_mask = bitmap2image(mask[0])
         return init_image, mask_path, sam_mask, coords, labels
 
     def sample_coords(self, mask : Image):
         bitmap = image2bitmap(mask)
-        print(bitmap.shape)
         positive_slice = np.argwhere(bitmap == True)
-        print(positive_slice.shape)
+        negative_slice = np.argwhere(bitmap == False)
+
         points = np.zeros(positive_slice.shape)
+        neg_points = np.zeros(negative_slice.shape)
         points[:,1], points[:,0] = positive_slice[:,0], positive_slice[:,1]
+        neg_points[:,1], neg_points[:,0] = negative_slice[:,0], negative_slice[:,1]
         pos_std, neg_std = 50, 100
         mean = np.mean(points, axis=0).astype(np.uint32)
         impact = 0
@@ -244,16 +254,21 @@ class ClipSegSAM(ClipSegBase):
 
         while impact <= self.num_positive_points:
             point = np.random.randn(1,2).astype(np.uint32)*pos_std + mean
-            if point in positive_slice:
+            if point in positive_slice and point not in coords:
                 point = np.clip(point, 0, 512)
                 coords[impact, :] = point
                 impact += 1
         
-        negative_slice = np.argwhere(bitmap == False)
-        neg_ind = np.random.uniform(size=(self.num_negative_points,), low=0, high=len(negative_slice)).astype(np.uint32)
-        negative_points = negative_slice[neg_ind]
-        coords[self.num_positive_points:,:] = negative_points
+        while True :
+            # neg_ind = np.random.uniform(size=(self.num_negative_points,), low=0, high=len(negative_slice)).astype(np.uint32)
+            neg_ind = np.random.randn(self.num_negative_points,2).astype(np.uint32)*50 + mean
+            if any(neg_ind) in points:
+                negative_points = negative_slice[neg_ind]
+                d = [cdist(p.reshape(1,2), points) for p in negative_points]
+                if np.min(d) >= 5 and np.max(d) <= 100 : break
         
+        coords[self.num_positive_points:,:] = negative_points
+            
         # while impact < self.num_positive_points + self.num_negative_points:
         #     point = np.random.randn(1,2).astype(np.uint32)*neg_std + mean
         #     if point not in positive_slice:
