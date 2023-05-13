@@ -33,7 +33,7 @@ def combine(image : Image, semantic_mask : Image, coords=None, labels=None) -> I
     ax.imshow(mask)
     ax.axis('on')
     if isinstance(coords, np.ndarray):
-        print(coords)
+        # print(coords)
         pos_points = coords[labels==1]
         neg_points = coords[labels==0]
         ax.scatter(pos_points[:, 0], pos_points[:, 1], color='green', marker='*', s=200, edgecolor='white', linewidth=1.25)

@@ -19,7 +19,7 @@ from torch import autocast
 from torchvision import transforms
 from segment_anything import sam_model_registry, SamPredictor
 from clipseg.models.clipseg import CLIPDensePredT
-from utils import bitmap2image
+from utils import bitmap2image, image2bitmap
 
 class ClipSegBase():
 
@@ -214,13 +214,13 @@ class ClipSegSAM(ClipSegBase):
         sam = sam_model_registry["vit_h"](checkpoint='checkpoints/sam_vit_h_4b8939.pth').to(self.device)
         self.sam = SamPredictor(sam)
         self.num_positive_points = 3
-        self.num_negative_points = 20
+        self.num_negative_points = 6
         
     def __call__(self, file):
         image = Image.open(os.path.join(self.data_path,file))
         mask_path, init_image = self.promptClipSeg(image=image, word_mask=self.word_mask)
         self.sam.set_image(np.asarray(init_image))
-        coords, labels = self.sample_coords_uniform(mask=mask_path)
+        coords, labels = self.sample_coords(mask=mask_path)
         mask, _, _ = self.sam.predict(
             point_coords=coords,
             point_labels=labels,
@@ -230,13 +230,40 @@ class ClipSegSAM(ClipSegBase):
         return init_image, mask_path, sam_mask, coords, labels
 
     def sample_coords(self, mask : Image):
-        positive_slice = np.argwhere(np.asarray(mask)[:,:,0] != 0)
+        bitmap = image2bitmap(mask)
+        print(bitmap.shape)
+        positive_slice = np.argwhere(bitmap == True)
+        print(positive_slice.shape)
         points = np.zeros(positive_slice.shape)
         points[:,1], points[:,0] = positive_slice[:,0], positive_slice[:,1]
         pos_std, neg_std = 50, 100
         mean = np.mean(points, axis=0).astype(np.uint32)
+        impact = 0
+        coords = np.zeros((self.num_negative_points + self.num_positive_points, 2))
+        labels = np.hstack([np.ones(self.num_positive_points), np.zeros(self.num_negative_points)])
 
+        while impact <= self.num_positive_points:
+            point = np.random.randn(1,2).astype(np.uint32)*pos_std + mean
+            if point in positive_slice:
+                point = np.clip(point, 0, 512)
+                coords[impact, :] = point
+                impact += 1
+        
+        negative_slice = np.argwhere(bitmap == False)
+        neg_ind = np.random.uniform(size=(self.num_negative_points,), low=0, high=len(negative_slice)).astype(np.uint32)
+        negative_points = negative_slice[neg_ind]
+        coords[self.num_positive_points:,:] = negative_points
+        
+        # while impact < self.num_positive_points + self.num_negative_points:
+        #     point = np.random.randn(1,2).astype(np.uint32)*neg_std + mean
+        #     if point not in positive_slice:
+        #         point = np.clip(point, 0, 512)
+        #         coords[impact, :] = point
+        #         impact += 1 
 
+        return coords.astype(np.uint32), labels.astype(np.uint8)
+        
+        
     def sample_coords_unfiorm(self, mask : Image):
         positive_slice = np.argwhere(np.asarray(mask)[:,:,0] != 0)
         negative_slice = np.argwhere(np.asarray(mask)[:,:,0] == 0)
@@ -247,6 +274,6 @@ class ClipSegSAM(ClipSegBase):
         coords = np.zeros(points.shape)
         coords[:,1], coords[:,0] = points[:,0], points[:,1]
         labels = np.hstack([np.ones(self.num_positive_points), np.zeros(self.num_negative_points)])
-        return coords, labels
+        return coords.astype(np.uint32), labels.astype(np.uint8)
     
     
