@@ -101,12 +101,28 @@ class ClipSegSD(ClipSegBase):
 
     def __init__(self, data_path: str, word_mask: str, sd_prompt : str, obstacle_prompt : str) -> None:
         super().__init__(data_path, word_mask)
-
         self.initStableDiffusionInpainting()
         self.word_mask = word_mask
         self.obstacle_prompt = obstacle_prompt
         self.sd_prompt = sd_prompt
     
+    def __call__(self, file):
+        """ 
+        Generates 4 masks with clipseg and one inpainted image with stable diffusion inpainting.
+            - prompt clipseg with image and mask_path
+            - prompt clipseg with image and mask_obstacle
+            - combine both masks
+            - prompt stable diffusion with image, combined mask and prompt
+            - prompt clipseg with stable diffusion output and prompt 
+        """
+        image = Image.open(os.path.join(self.data_path,file))
+        mask_path, init_image = self.promptClipSeg(image=image, word_mask=self.word_mask)
+        mask_obstacle, _ = self.promptClipSeg(image=image, word_mask=self.obstacle_prompt)
+        combined_mask = self.combineObstacleAndPathMasks(mask_path=mask_path, mask_obstacle=mask_obstacle)
+        stable_diffusion_output = self.promptStableDiffusionInpainting(prompt=self.sd_prompt, image=init_image, clipseg_mask=combined_mask)
+        stable_diffusion_output = stable_diffusion_output.images[0]
+        refined_mask_path, _ = self.promptClipSeg(image=stable_diffusion_output, word_mask=self.sd_prompt)    
+        return mask_path, mask_obstacle, combined_mask, refined_mask_path, stable_diffusion_output, init_image
     
     def initStableDiffusionInpainting(self):
         """ Initialize pretrained stable diffusion inpainting model """
@@ -142,7 +158,6 @@ class ClipSegSD(ClipSegBase):
     
     def combineObstacleAndPathMasks(self, mask_obstacle, mask_path):
         """ Adds 'mask_obstacle' and 'mask_path' to get a combined masked of traversable area """
-
         mask_obstacle = np.asarray(mask_obstacle)
         mask_path = np.asarray(mask_path)
         mask = np.copy(mask_path)
@@ -150,27 +165,7 @@ class ClipSegSD(ClipSegBase):
         white_obstacle_pixels = (mask_obstacle == [255,255,255]).all(axis=2)
         mask[white_path_pixels & white_obstacle_pixels] = [0,0,0]
         combined_mask = Image.fromarray(np.uint8(mask)).convert('RGB')
-
         return combined_mask
-           
-    
-    def forwardPass(self, file):
-        """ Generates 4 masks with clipseg and one inpainted image with stable diffusion inpainting.
-            - prompt clipseg with image and mask_path
-            - prompt clipseg with image and mask_obstacle
-            - combine both masks
-            - prompt stable diffusion with image, combined mask and prompt
-            - prompt clipseg with stable diffusion output and prompt """
-        
-        image = Image.open(os.path.join(self.data_path,file))
-        mask_path, init_image = self.promptClipSeg(image=image, word_mask=self.word_mask)
-        mask_obstacle, _ = self.promptClipSeg(image=image, word_mask=self.obstacle_prompt)
-        combined_mask = self.combineObstacleAndPathMasks(mask_path=mask_path, mask_obstacle=mask_obstacle)
-        stable_diffusion_output = self.promptStableDiffusionInpainting(prompt=self.sd_prompt, image=init_image, clipseg_mask=combined_mask)
-        stable_diffusion_output = stable_diffusion_output.images[0]
-        refined_mask_path, _ = self.promptClipSeg(image=stable_diffusion_output, word_mask=self.sd_prompt)    
-          
-        return mask_path, mask_obstacle, combined_mask, refined_mask_path, stable_diffusion_output, init_image
 
     def saveMasks(self, mask_path, mask_obstacle, combined_mask, refined_mask_path, images_dir, filename):
         plt.figure(figsize=(12,12))
@@ -218,14 +213,14 @@ class ClipSegSAM(ClipSegBase):
         super().__init__(data_path, word_mask)
         sam = sam_model_registry["vit_h"](checkpoint='checkpoints/sam_vit_h_4b8939.pth').to(self.device)
         self.sam = SamPredictor(sam)
-        self.num_positive_points = 5
-        self.num_negative_points = 5
+        self.num_positive_points = 3
+        self.num_negative_points = 20
         
     def __call__(self, file):
         image = Image.open(os.path.join(self.data_path,file))
         mask_path, init_image = self.promptClipSeg(image=image, word_mask=self.word_mask)
         self.sam.set_image(np.asarray(init_image))
-        coords, labels = self.sample_coords(mask=mask_path)
+        coords, labels = self.sample_coords_uniform(mask=mask_path)
         mask, _, _ = self.sam.predict(
             point_coords=coords,
             point_labels=labels,
@@ -236,6 +231,14 @@ class ClipSegSAM(ClipSegBase):
 
     def sample_coords(self, mask : Image):
         positive_slice = np.argwhere(np.asarray(mask)[:,:,0] != 0)
+        points = np.zeros(positive_slice.shape)
+        points[:,1], points[:,0] = positive_slice[:,0], positive_slice[:,1]
+        pos_std, neg_std = 50, 100
+        mean = np.mean(points, axis=0).astype(np.uint32)
+
+
+    def sample_coords_unfiorm(self, mask : Image):
+        positive_slice = np.argwhere(np.asarray(mask)[:,:,0] != 0)
         negative_slice = np.argwhere(np.asarray(mask)[:,:,0] == 0)
         pos_ind = np.random.uniform(size=(self.num_positive_points,), low=0, high=len(positive_slice)).astype(np.uint32)
         neg_ind = np.random.uniform(size=(self.num_negative_points,), low=0, high=len(negative_slice)).astype(np.uint32)
@@ -243,7 +246,7 @@ class ClipSegSAM(ClipSegBase):
         points = np.vstack([positive_points, negative_points])
         coords = np.zeros(points.shape)
         coords[:,1], coords[:,0] = points[:,0], points[:,1]
-        labels = np.hstack([np.ones(self.num_positive_points), np.zeross(self.num_negative_points)])
+        labels = np.hstack([np.ones(self.num_positive_points), np.zeros(self.num_negative_points)])
         return coords, labels
     
     
