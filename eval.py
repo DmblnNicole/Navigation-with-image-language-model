@@ -34,17 +34,20 @@ def main(mode : str):
             out.save(f'{images_dir}/{file}')
 
     elif 'sam':
+        positive = range(2,10)
+        negative = range(3,15)
         pipeline = ClipSegSAM(
             data_path='hike/road',
             word_mask='A bright photo of a road to walk on',
-            obstacle_prompt='A dull photo of bulky or voluminous obstacles that are bigger than 50 centimeters'
+            positive_samples=3,
+            negative_samples=10
         )
         files = pipeline.loadData()
         images_dir = './processed_hike/testing_sam'
 
-        for file in tqdm(files):
+        for file in files:
             init_image, mask_path, sam_mask, coords, labels = pipeline(file)
-            out = combine(init_image, mask_path, sam_mask, coords=coords, labels=labels)
+            out = combine(init_image, sam_mask, coords=coords, labels=labels)
             out.save(f'{images_dir}/{file}')
 
 

@@ -210,13 +210,12 @@ class ClipSegSAM(ClipSegBase):
     - sample pixel locations from the clipseg mask and pass them to segment anything
     """
 
-    def __init__(self, data_path: str, word_mask: str, obstacle_prompt : str) -> None:
+    def __init__(self, data_path: str, word_mask: str, positive_samples : int, negative_samples : int) -> None:
         super().__init__(data_path, word_mask)
         sam = sam_model_registry["vit_h"](checkpoint='checkpoints/sam_vit_h_4b8939.pth').to(self.device)
         self.sam = SamPredictor(sam)
-        self.obstacle_prompt = obstacle_prompt
-        self.num_positive_points = 3
-        self.num_negative_points = 6
+        self.num_positive_points = positive_samples
+        self.num_negative_points = negative_samples
     
     def __call__(self, file):
         image = Image.open(os.path.join(self.data_path,file))
@@ -226,7 +225,7 @@ class ClipSegSAM(ClipSegBase):
         # combined_mask = self.combineObstacleAndPathMasks(mask_path=mask_path, mask_obstacle=mask_obstacle)
 
         self.sam.set_image(np.asarray(init_image))
-        coords, labels = self.sample_coords(mask=mask_path)
+        coords, labels = self.sample_coords_unfiorm(mask=mask_path)
 
         mask, _, _ = self.sam.predict(
             point_coords=coords,
@@ -258,14 +257,14 @@ class ClipSegSAM(ClipSegBase):
                 point = np.clip(point, 0, 512)
                 coords[impact, :] = point
                 impact += 1
-        
+
+        print('looking for negative points')
         while True :
-            # neg_ind = np.random.uniform(size=(self.num_negative_points,), low=0, high=len(negative_slice)).astype(np.uint32)
-            neg_ind = np.random.randn(self.num_negative_points,2).astype(np.uint32)*50 + mean
-            if any(neg_ind) in points:
-                negative_points = negative_slice[neg_ind]
-                d = [cdist(p.reshape(1,2), points) for p in negative_points]
-                if np.min(d) >= 5 and np.max(d) <= 100 : break
+            neg_ind = np.random.uniform(size=(self.num_negative_points,), low=0, high=len(negative_slice)).astype(np.uint32)
+            # neg_ind = np.random.randn(self.num_negative_points,2).astype(np.uint32)*50 + mean
+            negative_points = negative_slice[neg_ind]
+            d = [cdist(p.reshape(1,2), points) for p in negative_points]
+            if np.min(d) >= 5: break
         
         coords[self.num_positive_points:,:] = negative_points
             
@@ -282,9 +281,18 @@ class ClipSegSAM(ClipSegBase):
     def sample_coords_unfiorm(self, mask : Image):
         positive_slice = np.argwhere(np.asarray(mask)[:,:,0] != 0)
         negative_slice = np.argwhere(np.asarray(mask)[:,:,0] == 0)
+        negative_slice = negative_slice[negative_slice[:,0] >= 250, :]
         pos_ind = np.random.uniform(size=(self.num_positive_points,), low=0, high=len(positive_slice)).astype(np.uint32)
-        neg_ind = np.random.uniform(size=(self.num_negative_points,), low=0, high=len(negative_slice)).astype(np.uint32)
-        positive_points, negative_points = positive_slice[pos_ind], negative_slice[neg_ind]
+        # neg_ind = np.random.uniform(size=(self.num_negative_points,), low=0, high=len(negative_slice)).astype(np.uint32)
+        positive_points = positive_slice[pos_ind]
+
+        while True :
+            neg_ind = np.random.uniform(size=(self.num_negative_points,), low=0, high=len(negative_slice)).astype(np.uint32)
+            # neg_ind = np.random.randn(self.num_negative_points,2).astype(np.uint32)*50 + mean
+            negative_points = negative_slice[neg_ind]
+            d = [cdist(p.reshape(1,2), positive_points) for p in negative_points]
+            if np.min(d) >= 30: break
+
         points = np.vstack([positive_points, negative_points])
         coords = np.zeros(points.shape)
         coords[:,1], coords[:,0] = points[:,0], points[:,1]
