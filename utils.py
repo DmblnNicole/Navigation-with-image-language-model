@@ -26,6 +26,10 @@ def show_mask(mask, ax, random_color=False):
 
 def combine(image : Image, clip_mask, sam_mask=None, coords=None, labels=None) -> Image:
     # print(type(clip_mask))
+        
+    new_size = (512, 512)
+    resized_image = image.resize(new_size)
+    
     fig = Figure()
     canvas = FigureCanvas(fig)
     ax = fig.gca()
@@ -35,7 +39,7 @@ def combine(image : Image, clip_mask, sam_mask=None, coords=None, labels=None) -
     if isinstance(sam_mask, Image.Image):
         sam_mask = show_mask(image2bitmap(sam_mask, dtype=np.bool_), plt, random_color=True)
         ax.imshow(sam_mask)
-    ax.axis('on')
+    ax.axis('off')
     if isinstance(coords, np.ndarray):
         # print(coords)
         pos_points = coords[labels==1]

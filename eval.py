@@ -11,6 +11,7 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 from utils import show_mask, combine, image2bitmap, get_GTmask_from_filename, \
     compute_metric, save_metric_for_one_pair, save_metric_for_one_pair_with_SD_output
+from evaluation import *
 
 def main(mode : str):
     if mode == 'sd':
@@ -37,19 +38,30 @@ def main(mode : str):
         positive = range(2,10)
         negative = range(3,15)
         pipeline = ClipSegSAM(
-            data_path='hike/road',
+            data_path='./youtube100',
             word_mask='A bright photo of a road to walk on',
             positive_samples=3,
             negative_samples=10
         )
         files = pipeline.loadData()
-        images_dir = './processed_hike/testing_sam'
+        images_dir = './metrics/youtube100'
+        sam_masks = []
 
-        for file in files:
+        for file in tqdm(files):
             init_image, mask_path, sam_mask, coords, labels = pipeline(file)
-            out = combine(init_image, sam_mask, coords=coords, labels=labels)
-            out.save(f'{images_dir}/{file}')
+            sam_masks.append(sam_mask)
+            combined_image = combine(init_image, sam_mask, coords=coords, labels=labels)
+            metric_for_one_pair = compute_metric([sam_mask], [file])
+            save_metric_for_one_pair_sam(
+                filename = file, 
+                metric = metric_for_one_pair, 
+                combined_image = combined_image, 
+                images_dir = images_dir, 
+                prompt = 'A bright photo of a road to walk on')
+            #out.save(f'{images_dir}/{file}')
 
+        metric = compute_metric(sam_masks, files)
+        print("metric: ", metric)
 
 if __name__ == '__main__':
     main('sam')

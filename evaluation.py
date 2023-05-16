@@ -102,13 +102,13 @@ def save_metric_for_one_pair_with_SD_output(filename, init_image, SD_output, mas
 def save_metric_for_one_pair_sam(filename, metric, combined_image, images_dir, prompt):
     gt_mask = get_GTmask_from_filename(filename)
         
-    plt.figure(figsize=(12,8))
+    plt.figure(figsize=(12,6))
     plt.suptitle(f"mean_iou: {getMetric(metric)[0]}  " 
                 f"mean_acc: {getMetric(metric)[1]}  "
                 f"overall_accuracy: {getMetric(metric)[4]}  "
                 f"per_category_iou: {getMetric(metric)[2]}  "
-                f"per_category_acc: {getMetric(metric)[3]}\n\n"
-                f"CligSeg prompt: {prompt}")
+                f"per_category_acc: {getMetric(metric)[3]}\n\n" )
+                #f"CligSeg prompt: {prompt}")
     plt.subplot(1,2,1)
     plt.title('ClipSeg + SAM')
     plt.imshow(combined_image)
