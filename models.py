@@ -22,6 +22,7 @@ from clipseg.models.clipseg import CLIPDensePredT
 from utils import bitmap2image, image2bitmap
 from scipy.spatial.distance import cdist
 
+
 class ClipSegBase():
 
     """
@@ -224,17 +225,22 @@ class ClipSegSAM(ClipSegBase):
         # mask_obstacle, _ = self.promptClipSeg(image=image, word_mask=self.obstacle_prompt)
         # combined_mask = self.combineObstacleAndPathMasks(mask_path=mask_path, mask_obstacle=mask_obstacle)
 
+        # compute image embeddings
         self.sam.set_image(np.asarray(init_image))
-        coords, labels = self.sample_coords_unfiorm(mask=mask_path)
+        # coords are labeled with foreground (1) and background (0)
+        coords, labels = self.sample_coords_uniform(mask=mask_path)
 
-        mask, _, _ = self.sam.predict(
+        # model returns masks, quality predictions for those masks, and low resolution mask logits 
+        # that can be passed to the next iteration of prediction. 
+        # logits are array of shape CxHxW, where C is the number of masks and H=W=256
+        # mask.shape = (1,512,512), logits.shape = (1,256,256)
+        mask, _, logits = self.sam.predict( 
             point_coords=coords,
             point_labels=labels,
             multimask_output=False
         )
-
         sam_mask = bitmap2image(mask[0])
-        return init_image, mask_path, sam_mask, coords, labels
+        return init_image, mask_path, sam_mask, logits, coords, labels
 
     def sample_coords(self, mask : Image):
         bitmap = image2bitmap(mask)
@@ -278,7 +284,7 @@ class ClipSegSAM(ClipSegBase):
         return coords.astype(np.uint32), labels.astype(np.uint8)
         
         
-    def sample_coords_unfiorm(self, mask : Image):
+    def sample_coords_uniform(self, mask : Image):
         positive_slice = np.argwhere(np.asarray(mask)[:,:,0] != 0)
         negative_slice = np.argwhere(np.asarray(mask)[:,:,0] == 0)
         negative_slice = negative_slice[negative_slice[:,0] >= 250, :]

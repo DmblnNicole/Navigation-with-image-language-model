@@ -44,24 +44,49 @@ def main(mode : str):
             negative_samples=10
         )
         files = pipeline.loadData()
-        images_dir = './metrics/youtube100'
-        sam_masks = []
+        images_dir = './heatmap/heatmaps'
+        
+        """ - prompt each image 100 times with uniformly sampled points
+            - get 100 masks and 100 logits
+            - get one heat map by adding all logits and rescale to [0,1]
+            - overlay heatmap with image """
 
         for file in tqdm(files):
-            init_image, mask_path, sam_mask, coords, labels = pipeline(file)
-            sam_masks.append(sam_mask)
-            combined_image = combine(init_image, sam_mask, coords=coords, labels=labels)
-            metric_for_one_pair = compute_metric([sam_mask], [file])
-            save_metric_for_one_pair_sam(
-                filename = file, 
-                metric = metric_for_one_pair, 
-                combined_image = combined_image, 
-                images_dir = images_dir, 
-                prompt = 'A bright photo of a road to walk on')
-            #out.save(f'{images_dir}/{file}')
+            logits_sum = np.zeros((1,256,256))
+            for i in range(100):
+                init_image, mask_path, sam_mask, logits, coords, labels = pipeline(file)
+                #sam_mask.save(f'./heatmap/masks_img_000238/{i}_{files[0]}')
+                # add logits
+                logits_sum += logits
+            # upsample logits to match input image size
+            upsampled_logits = cv2.resize(logits_sum[0], (512, 512), interpolation=cv2.INTER_LINEAR)
+            # normalize logits to [0,1]          Question: or get average logits by logits/100?
+            normalized_logits = (upsampled_logits - np.min(upsampled_logits)) / (np.max(upsampled_logits) - np.min(upsampled_logits))
+            # create heatmap
+            heatmap = cv2.applyColorMap(np.uint8(normalized_logits * 255), cv2.COLORMAP_JET)
+            overlay = cv2.addWeighted(np.asarray(init_image), 0.5, heatmap, 0.5, 0)
+            cv2.imwrite(f'{images_dir}/{file}', overlay)
+            
+        """ reprompt SAM with logits """
+        
 
-        metric = compute_metric(sam_masks, files)
-        print("metric: ", metric)
+        """ computes and saves metrics for whole dataset """
+        # sam_masks = []
+        # for file in tqdm(files):
+        #     init_image, mask_path, sam_mask, logits, coords, labels = pipeline(file)
+        #     sam_masks.append(sam_mask)
+        #     combined_image = combine(init_image, sam_mask, coords=coords, labels=labels)
+        #     metric_for_one_pair = compute_metric([sam_mask], [file])
+        #     save_metric_for_one_pair_sam(
+        #         filename = file, 
+        #         metric = metric_for_one_pair, 
+        #         combined_image = combined_image, 
+        #         images_dir = images_dir, 
+        #         prompt = 'A bright photo of a road to walk on')
+        #     #out.save(f'{images_dir}/{file}')
+
+        # metric = compute_metric(sam_masks, files)
+        # print("metric: ", metric)
 
 if __name__ == '__main__':
     main('sam')
