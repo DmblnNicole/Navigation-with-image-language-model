@@ -99,7 +99,7 @@ def save_metric_for_one_pair_with_SD_output(filename, init_image, SD_output, mas
     plt.savefig(f"{images_dir}/{filename}")
     plt.close() # Close the figure after saving
     
-def save_metric_for_one_pair_sam(filename, metric, combined_image, images_dir, prompt):
+def save_metric_for_one_pair_sam(filename, metric, combined_image, images_dir, prompt, clipseg_mask):
     gt_mask = get_GTmask_from_filename(filename)
         
     plt.figure(figsize=(12,6))
@@ -109,11 +109,16 @@ def save_metric_for_one_pair_sam(filename, metric, combined_image, images_dir, p
                 f"per_category_iou: {getMetric(metric)[2]}  "
                 f"per_category_acc: {getMetric(metric)[3]}\n\n" )
                 #f"CligSeg prompt: {prompt}")
-    plt.subplot(1,2,1)
+    
+    plt.subplot(1,3,1)
+    plt.title('ClipSeg Mask')
+    plt.imshow(clipseg_mask)
+    plt.axis('off')
+    plt.subplot(1,3,2)
     plt.title('ClipSeg + SAM')
     plt.imshow(combined_image)
     plt.axis('off')
-    plt.subplot(1,2,2)
+    plt.subplot(1,3,3)
     plt.title('Ground Truth')
     plt.imshow(gt_mask)
     plt.axis('off')

@@ -218,7 +218,7 @@ class ClipSegSAM(ClipSegBase):
         self.num_positive_points = positive_samples
         self.num_negative_points = negative_samples
     
-    def __call__(self, file):
+    def __call__(self, file, multimask_output, mask_input):
         image = Image.open(os.path.join(self.data_path,file))
 
         mask_path, init_image = self.promptClipSeg(image=image, word_mask=self.word_mask)
@@ -234,13 +234,27 @@ class ClipSegSAM(ClipSegBase):
         # that can be passed to the next iteration of prediction. 
         # logits are array of shape CxHxW, where C is the number of masks and H=W=256
         # mask.shape = (1,512,512), logits.shape = (1,256,256)
-        mask, _, logits = self.sam.predict( 
-            point_coords=coords,
-            point_labels=labels,
-            multimask_output=False
-        )
+        if multimask_output:
+            # prompt first time for multiple masks to get logits and score of masks
+            mask, scores , logits = self.sam.predict( 
+                point_coords=coords,
+                point_labels=labels,
+                multimask_output=True
+            )
+            
+        else:
+            # reprompt with logits, need only single mask
+            scores = 0
+            mask, _, logits = self.sam.predict( 
+                point_coords=coords,
+                point_labels=labels,
+                mask_input = mask_input[None, :, :],
+                multimask_output=False
+            )
+            
+        
         sam_mask = bitmap2image(mask[0])
-        return init_image, mask_path, sam_mask, logits, coords, labels
+        return init_image, mask_path, sam_mask, scores, logits, coords, labels
 
     def sample_coords(self, mask : Image):
         bitmap = image2bitmap(mask)

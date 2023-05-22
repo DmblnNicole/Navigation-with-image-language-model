@@ -54,10 +54,20 @@ def main(mode : str):
         for file in tqdm(files):
             logits_sum = np.zeros((1,256,256))
             for i in range(100):
-                init_image, mask_path, sam_mask, logits, coords, labels = pipeline(file)
-                #sam_mask.save(f'./heatmap/masks_img_000238/{i}_{files[0]}')
+                # prompt once
+                multimask_output = True
+                mask_input = None
+                init_image, mask_path, sam_mask, scores, logits, coords, labels = pipeline(file, multimask_output, mask_input)
+                
+                # prompt twice
+                multimask_output = False
+                mask_input = logits[np.argmax(scores), :, :]
+                init_image, mask_path, sam_mask, scores, logits, coords, labels = pipeline(file, multimask_output, mask_input)
+                #sam_mask.save(f'./heatmap/multimask/{i}_{files[0]}')
+                
                 # add logits
                 logits_sum += logits
+                
             # upsample logits to match input image size
             upsampled_logits = cv2.resize(logits_sum[0], (512, 512), interpolation=cv2.INTER_LINEAR)
             # normalize logits to [0,1]          Question: or get average logits by logits/100?
@@ -66,27 +76,25 @@ def main(mode : str):
             heatmap = cv2.applyColorMap(np.uint8(normalized_logits * 255), cv2.COLORMAP_JET)
             overlay = cv2.addWeighted(np.asarray(init_image), 0.5, heatmap, 0.5, 0)
             cv2.imwrite(f'{images_dir}/{file}', overlay)
-            
-        """ reprompt SAM with logits """
         
-
         """ computes and saves metrics for whole dataset """
-        # sam_masks = []
-        # for file in tqdm(files):
-        #     init_image, mask_path, sam_mask, logits, coords, labels = pipeline(file)
-        #     sam_masks.append(sam_mask)
-        #     combined_image = combine(init_image, sam_mask, coords=coords, labels=labels)
-        #     metric_for_one_pair = compute_metric([sam_mask], [file])
-        #     save_metric_for_one_pair_sam(
-        #         filename = file, 
-        #         metric = metric_for_one_pair, 
-        #         combined_image = combined_image, 
-        #         images_dir = images_dir, 
-        #         prompt = 'A bright photo of a road to walk on')
-        #     #out.save(f'{images_dir}/{file}')
+        sam_masks = []
+        for file in tqdm(files):
+            init_image, mask_path, sam_mask, logits, coords, labels = pipeline(file)
+            sam_masks.append(sam_mask)
+            combined_image = combine(init_image, sam_mask, coords=coords, labels=labels)
+            metric_for_one_pair = compute_metric([sam_mask], [file])
+            save_metric_for_one_pair_sam(
+                filename = file, 
+                metric = metric_for_one_pair, 
+                combined_image = combined_image, 
+                images_dir = images_dir, 
+                prompt = 'A bright photo of a road to walk on', 
+                clipseg_mask = mask_path)
+            #out.save(f'{images_dir}/{file}')
 
-        # metric = compute_metric(sam_masks, files)
-        # print("metric: ", metric)
+        metric = compute_metric(sam_masks, files)
+        print("metric: ", metric)
 
 if __name__ == '__main__':
     main('sam')
