@@ -26,3 +26,5 @@
 11 SAM no reprompt {'mean_iou': 0.8484157300542464, 'mean_accuracy': 0.913642233937124, 'overall_accuracy': 0.969942398071289, 'per_category_iou': array([0.96729037, 0.72954109]), 'per_category_accuracy': array([0.98333263, 0.84395184])}
 
 12 SAM reprompt {'mean_iou': 0.8718263460350821, 'mean_accuracy': 0.9030753514623674, 'overall_accuracy': 0.9765724945068359, 'per_category_iou': array([0.97459007, 0.76906262]), 'per_category_accuracy': array([0.99405279, 0.81209791])}
+
+13 SAM path_sum_over_logits_1_{'mean_iou': 0.8128847761712361, 'mean_accuracy': 0.9498345303579547, 'overall_accuracy': 0.9562136840820312, 'per_category_iou': array([0.95185717, 0.67391238]), 'per_category_accuracy': array([0.95773088, 0.94193818])}

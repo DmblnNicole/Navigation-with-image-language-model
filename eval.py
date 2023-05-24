@@ -40,61 +40,133 @@ def main(mode : str):
         pipeline = ClipSegSAM(
             data_path='./youtube100',
             word_mask='A bright photo of a road to walk on',
-            positive_samples=3,
-            negative_samples=10
+            positive_samples=9,
+            negative_samples=11
         )
         files = pipeline.loadData()
-        images_dir = './heatmap/heatmaps'
         
         """ - prompt each image 100 times with uniformly sampled points
             - get 100 masks and 100 logits
             - get one heat map by adding all logits and rescale to [0,1]
             - overlay heatmap with image """
 
+        # for file in tqdm(files):
+        #     logits_sum = np.zeros((1,256,256))
+        #     for i in range(100):
+        #         # prompt once
+        #         multimask_output = True
+        #         mask_input = None
+        #         init_image, mask_path, sam_mask, scores, logits, coords, labels = pipeline(file, multimask_output, mask_input)
+                
+        #         # prompt twice
+        #         multimask_output = False
+        #         mask_input = logits[np.argmax(scores), :, :]
+        #         init_image, mask_path, sam_mask, scores, logits, coords, labels = pipeline(file, multimask_output, mask_input)
+        #         #sam_mask.save(f'./heatmap/multimask/{i}_{files[0]}')
+                
+        #         # add logits
+        #         logits_sum += logits
+                
+        #     # upsample logits to match input image size
+        #     upsampled_logits = cv2.resize(logits_sum[0], (512, 512), interpolation=cv2.INTER_LINEAR)
+        #     # normalize logits to [0,1]          Question: or get average logits by logits/100?
+        #     normalized_logits = (upsampled_logits - np.min(upsampled_logits)) / (np.max(upsampled_logits) - np.min(upsampled_logits))
+        #     # create heatmap
+        #     heatmap = cv2.applyColorMap(np.uint8(normalized_logits * 255), cv2.COLORMAP_JET)
+        #     overlay = cv2.addWeighted(np.asarray(init_image), 0.5, heatmap, 0.5, 0)
+        #     cv2.imwrite(f'{images_dir}/{file}', overlay)
+            
+        """ get the red and orange mask when prompting the model 100 times with reprompting strategy (200 prompts in total per image) """
+        thresholded_logits_masks = []
+        num_reprompts = 80
+        images_dir = f'./path_sum_over_logits_{num_reprompts}'
         for file in tqdm(files):
             logits_sum = np.zeros((1,256,256))
-            for i in range(100):
+            for i in range(num_reprompts):
                 # prompt once
                 multimask_output = True
                 mask_input = None
                 init_image, mask_path, sam_mask, scores, logits, coords, labels = pipeline(file, multimask_output, mask_input)
-                
+            
                 # prompt twice
                 multimask_output = False
                 mask_input = logits[np.argmax(scores), :, :]
                 init_image, mask_path, sam_mask, scores, logits, coords, labels = pipeline(file, multimask_output, mask_input)
                 #sam_mask.save(f'./heatmap/multimask/{i}_{files[0]}')
-                
-                # add logits
-                logits_sum += logits
+            # add logits
+            logits_sum += logits
                 
             # upsample logits to match input image size
             upsampled_logits = cv2.resize(logits_sum[0], (512, 512), interpolation=cv2.INTER_LINEAR)
             # normalize logits to [0,1]          Question: or get average logits by logits/100?
             normalized_logits = (upsampled_logits - np.min(upsampled_logits)) / (np.max(upsampled_logits) - np.min(upsampled_logits))
-            # create heatmap
-            heatmap = cv2.applyColorMap(np.uint8(normalized_logits * 255), cv2.COLORMAP_JET)
-            overlay = cv2.addWeighted(np.asarray(init_image), 0.5, heatmap, 0.5, 0)
+            # set threshold for binary mask to 0.5
+            thresh = 0.5
+            thresholded_logits = np.zeros(normalized_logits.shape)
+            for row in range(normalized_logits.shape[0]):
+                for col in range(normalized_logits.shape[1]):
+                    if normalized_logits[row,col] > thresh:
+                        thresholded_logits[row,col] = 254
+                    else: 
+                        thresholded_logits[row,col] = 0
+                        
+            rgb_image = np.zeros((512, 512, 3), dtype=np.uint8)
+            rgb_image[:, :, 0] = thresholded_logits  
+            rgb_image[:, :, 1] = 0  
+            rgb_image[:, :, 2] = 0  
+            
+            logit_mask = Image.fromarray(np.asarray(rgb_image))
+            thresholded_logits_masks.append(logit_mask)
+            
+            # save image of path
+            init_image_bgr = cv2.cvtColor(np.asarray(init_image), cv2.COLOR_RGB2BGR)
+            thresholded_logits_bgr = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2BGR)
+            overlay = cv2.addWeighted(init_image_bgr, 0.7,thresholded_logits_bgr, 0.8, 0)
             cv2.imwrite(f'{images_dir}/{file}', overlay)
         
-        """ computes and saves metrics for whole dataset """
-        sam_masks = []
-        for file in tqdm(files):
-            init_image, mask_path, sam_mask, logits, coords, labels = pipeline(file)
-            sam_masks.append(sam_mask)
-            combined_image = combine(init_image, sam_mask, coords=coords, labels=labels)
-            metric_for_one_pair = compute_metric([sam_mask], [file])
-            save_metric_for_one_pair_sam(
-                filename = file, 
-                metric = metric_for_one_pair, 
-                combined_image = combined_image, 
-                images_dir = images_dir, 
-                prompt = 'A bright photo of a road to walk on', 
-                clipseg_mask = mask_path)
-            #out.save(f'{images_dir}/{file}')
 
-        metric = compute_metric(sam_masks, files)
-        print("metric: ", metric)
+        # compute metric
+        metric = compute_metric(thresholded_logits_masks, files)
+        print(metric)
+        # save to text file
+        with open('mean_iou.txt', 'a') as f:  # Open the file in append mode
+            f.write(f"\n{metric}_{images_dir}\n")
+        
+        
+        
+        """ plot number of prompts vs mean iou of extracted mask """
+        
+        
+        """ computes and saves metrics for whole dataset """
+        # sam_masks = []
+        # for file in tqdm(files):
+        #     #init_image, mask_path, sam_mask, logits, coords, labels = pipeline(file)
+            
+        #     #prompt once
+        #     multimask_output = True
+        #     mask_input = None
+        #     init_image, mask_path, sam_mask, scores, logits, coords, labels = pipeline(file, multimask_output, mask_input)
+            
+        #     # prompt twice
+        #     multimask_output = False
+        #     mask_input = logits[np.argmax(scores), :, :]
+        #     init_image, mask_path, sam_mask, _, logits, coords, labels = pipeline(file, multimask_output, mask_input)
+        #     print(sam_mask.shape)
+        
+        #     sam_masks.append(sam_mask)
+        #     combined_image = combine(init_image, sam_mask, coords=coords, labels=labels)
+        #     metric_for_one_pair = compute_metric([sam_mask], [file])
+        #     save_metric_for_one_pair_sam(
+        #         filename = file, 
+        #         metric = metric_for_one_pair, 
+        #         combined_image = combined_image, 
+        #         images_dir = images_dir, 
+        #         prompt = 'A bright photo of a road to walk on', 
+        #         clipseg_mask = mask_path)
+        #     #out.save(f'{images_dir}/{file}')
+
+        # metric = compute_metric(sam_masks, files)
+        # print("metric: ", metric)
 
 if __name__ == '__main__':
     main('sam')
