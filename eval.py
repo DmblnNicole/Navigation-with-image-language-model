@@ -79,24 +79,35 @@ def main(mode : str):
         #     cv2.imwrite(f'{images_dir}/{file}', overlay)
             
         """ get the red and orange mask when prompting the model several times """
-        # thresholded_logits_masks = []
-        # num_reprompts = 20
-        # #images_dir = f'./path_sum_over_logits_{num_reprompts}'
-        # images_dir = './threshold_0.65_reprompt_20'
-        # for file in tqdm(files):
-        #     # prompt once
-        #     multimask_output = True
-        #     mask_input = None
-        #     init_image, mask_path, sam_mask, scores, logits, coords, labels = pipeline(file, multimask_output, mask_input)
-        #     logits_sum = np.zeros((1,256,256))
-        #     for i in range(num_reprompts):
-        #         # prompt twice
-        #         multimask_output = False
-        #         mask_input = logits[np.argmax(scores), :, :]
-        #         init_image, mask_path, sam_mask, scores, logits, coords, labels = pipeline(file, multimask_output, mask_input)
-        #         #sam_mask.save(f'./heatmap/multimask/{i}_{files[0]}')
-        #         # add logits
-        #         logits_sum += logits
+        thresholded_logits_masks = []
+        num_reprompts = 10
+        #images_dir = f'./path_sum_over_logits_{num_reprompts}'
+        images_dir = './accumulated_logits_reprompt20'
+        sam_masks = []
+        for file in tqdm(files):
+            # prompt once
+            multimask_output = True
+            mask_input = None
+            init_image, mask_path, sam_mask, scores, logits, coords, labels = pipeline(file, multimask_output, mask_input)
+            logits_sum = np.zeros((1,256,256))
+            for i in range(num_reprompts):
+                # prompt twice
+                multimask_output = False
+                mask_input = logits[np.argmax(scores), :, :]
+                init_image, mask_path, sam_mask, scores, logits, coords, labels = pipeline(file, multimask_output, mask_input)
+                #sam_mask.save(f'./heatmap/multimask/{i}_{files[0]}')
+                # add logits
+                logits_sum += logits
+            logits_mean = logits_sum * (1/num_reprompts)
+            # prompt last time with accumulated logits
+            mask_input = logits_mean[0]
+            init_image, mask_path, sam_mask, scores, logits, coords, labels = pipeline(file, multimask_output, mask_input)
+            sam_masks.append(sam_mask)
+            combined_image = combine(init_image, sam_mask, coords=coords, labels=labels)
+            combined_image.save(f'{images_dir}/{file}')
+
+        # 
+        # 
         #     # upsample logits to match input image size
         #     upsampled_logits = cv2.resize(logits_sum[0], (512, 512), interpolation=cv2.INTER_LINEAR)
         #     # normalize logits to [0,1]          Question: or get average logits by logits/100?
@@ -126,74 +137,71 @@ def main(mode : str):
         #     overlay = cv2.addWeighted(init_image_bgr, 0.7,thresholded_logits_bgr, 0.8, 0)
         #     cv2.imwrite(f'{images_dir}/{file}', overlay)
         
-
-        # # compute metric
-        # metric, _ = compute_metric(thresholded_logits_masks, files)
-        # print(metric)
-        # # save to text file
-        # with open('mean_iou.txt', 'a') as f:  # Open the file in append mode
-        #     f.write(f"\n{metric}_{images_dir}\n")
+        # compute metric
+        metric, _ = compute_metric(sam_masks, files)
+        print(metric)
+        # save to text file
+        with open('mean_iou.txt', 'a') as f:  # Open the file in append mode
+            f.write(f"\n{metric}_{images_dir}\n")
             
             
-        """ roc curve for all images """
-        all_labels = []
-        all_scores = []
+        # """ roc curve for all images """
+        # all_labels = []
+        # all_scores = []
     
-        # get summed and scaled logits per 20 prompts
-        num_reprompts = 1
-        #images_dir = f'./path_sum_over_logits_{num_reprompts}'
-        images_dir = './ROC_curve_reprompts_80'
-        for file in tqdm(files):
-            # get gt_masks
-            gt_mask = get_GTmask_from_filename(file) # bool
-            gt_mask_binary = gt_mask.astype(int)
-            # prompt once
-            multimask_output = True
-            mask_input = None
-            init_image, mask_path, sam_mask, scores, logits, coords, labels = pipeline(file, multimask_output, mask_input)
-            logits_sum = np.zeros((1,256,256))
-            for i in range(num_reprompts):
-                # prompt twice
-                multimask_output = False
-                mask_input = logits[np.argmax(scores), :, :]
-                init_image, mask_path, sam_mask, scores, logits, coords, labels = pipeline(file, multimask_output, mask_input)
-                #sam_mask.save(f'./heatmap/multimask/{i}_{files[0]}')
-                # add logits
-                logits_sum += logits
-            # upsample logits to match input image size
-            upsampled_logits = cv2.resize(logits_sum[0], (512, 512), interpolation=cv2.INTER_LINEAR)
-            # normalize logits to [0,1]          Question: or get average logits by logits/100?
-            normalized_logits = (upsampled_logits - np.min(upsampled_logits)) / (np.max(upsampled_logits) - np.min(upsampled_logits))
+        # # get summed and scaled logits per 20 prompts
+        # num_reprompts = 20
+        # #images_dir = f'./path_sum_over_logits_{num_reprompts}'
+        # images_dir = './ROC_curve_reprompts_80'
+        # for file in tqdm(files):
+        #     # get gt_masks
+        #     gt_mask = get_GTmask_from_filename(file) # bool
+        #     gt_mask_binary = gt_mask.astype(int)
+        #     # prompt once
+        #     multimask_output = True
+        #     mask_input = None
+        #     init_image, mask_path, sam_mask, scores, logits, coords, labels = pipeline(file, multimask_output, mask_input)
+        #     logits_sum = np.zeros((1,256,256))
+        #     for i in range(num_reprompts):
+        #         # prompt twice
+        #         multimask_output = False
+        #         mask_input = logits[np.argmax(scores), :, :]
+        #         init_image, mask_path, sam_mask, scores, logits, coords, labels = pipeline(file, multimask_output, mask_input)
+        #         #sam_mask.save(f'./heatmap/multimask/{i}_{files[0]}')
+        #         # add logits
+        #         logits_sum += logits
+        #     # upsample logits to match input image size
+        #     upsampled_logits = cv2.resize(logits_sum[0], (512, 512), interpolation=cv2.INTER_LINEAR)
+        #     # normalize logits to [0,1]          Question: or get average logits by logits/100?
+        #     normalized_logits = (upsampled_logits - np.min(upsampled_logits)) / (np.max(upsampled_logits) - np.min(upsampled_logits))
 
 
-            # Flatten the binary masks and labels
-            labels = np.concatenate([mask.flatten() for mask in gt_mask_binary])
-            scores = np.concatenate([mask.flatten() for mask in normalized_logits])
-            all_labels.extend(labels)
-            all_scores.extend(scores)
-            # all_labels = np.concatenate([mask.flatten() for mask in all_labels])
-            # all_scores = np.concatenate([mask.flatten() for mask in all_scores])
+        #     # Flatten the binary masks and labels
+        #     labels = np.concatenate([mask.flatten() for mask in gt_mask_binary])
+        #     scores = np.concatenate([mask.flatten() for mask in normalized_logits])
+        #     all_labels.extend(labels)
+        #     all_scores.extend(scores)
 
-        # Compute the false positive rate and true positive rate for different thresholds
-        fpr, tpr, thresholds = roc_curve(all_labels, all_scores)
-        # Pickle the arrays
-        with open(f'roc_data_reprompts_{num_reprompts}.pickle', 'wb') as f:
-            pickle.dump((fpr, tpr, thresholds), f)
-        roc_auc = roc_auc_score(all_labels, all_scores)
-        print("roc_auc", roc_auc)
+        # # Compute the false positive rate and true positive rate
+        # fpr, tpr, thresholds = roc_curve(all_labels, all_scores)
+        # # Pickle the arrays
+        # with open(f'roc_data_reprompts_{num_reprompts}.pickle', 'wb') as f:
+        #     pickle.dump((fpr, tpr, thresholds), f)
+        # roc_auc = roc_auc_score(all_labels, all_scores)
+        # print("roc_auc", roc_auc)
         
         
-        # calculate the g-mean for each threshold
-        gmeans = sqrt(tpr * (1-fpr))
-        ix = argmax(gmeans)
-        best_threshold = thresholds[ix]
-        print("best_threshold", best_threshold)
+        # # calculate the g-mean for each threshold
+        # gmeans = np.sqrt(tpr * (1-fpr))
+        # ix = np.argmax(gmeans)
+        # best_threshold = thresholds[ix]
+        # print("best_threshold", best_threshold)
         
-        plt.plot(fpr, tpr)
-        plt.xlabel('False Positive Rate')
-        plt.ylabel('True Positive Rate')
-        plt.title('ROC Curve')
-        plt.savefig('./ROC_curve.png')
+        # plt.plot(fpr, tpr)
+        # plt.xlabel('False Positive Rate')
+        # plt.ylabel('True Positive Rate')
+        # plt.title('ROC Curve')
+        # plt.savefig(f'./ROC_curve_{num_reprompts}.png')
         
     
         
@@ -204,6 +212,7 @@ def main(mode : str):
         
         
         """ computes and saves metrics for whole dataset """
+        # images_dir = './reprompt1_best_barams'
         # sam_masks = []
         # for file in tqdm(files):
         #     #init_image, mask_path, sam_mask, logits, coords, labels = pipeline(file)
@@ -217,19 +226,19 @@ def main(mode : str):
         #     multimask_output = False
         #     mask_input = logits[np.argmax(scores), :, :]
         #     init_image, mask_path, sam_mask, _, logits, coords, labels = pipeline(file, multimask_output, mask_input)
-        #     print(sam_mask.shape)
+
         
         #     sam_masks.append(sam_mask)
         #     combined_image = combine(init_image, sam_mask, coords=coords, labels=labels)
-        #     metric_for_one_pair, _ = compute_metric([sam_mask], [file])
-        #     save_metric_for_one_pair_sam(
-        #         filename = file, 
-        #         metric = metric_for_one_pair, 
-        #         combined_image = combined_image, 
-        #         images_dir = images_dir, 
-        #         prompt = 'A bright photo of a road to walk on', 
-        #         clipseg_mask = mask_path)
-        #     #out.save(f'{images_dir}/{file}')
+        #     # metric_for_one_pair, _ = compute_metric([sam_mask], [file])
+        #     # save_metric_for_one_pair_sam(
+        #     #     filename = file, 
+        #     #     metric = metric_for_one_pair, 
+        #     #     combined_image = combined_image, 
+        #     #     images_dir = images_dir, 
+        #     #     prompt = 'A bright photo of a road to walk on', 
+        #     #     clipseg_mask = mask_path)
+        #     combined_image.save(f'{images_dir}/{file}')
 
         # metric, _ = compute_metric(sam_masks, files)
         # print("metric: ", metric)
