@@ -35,7 +35,7 @@ def compute_metric(masks, files):
         num_labels=2, 
         ignore_index=255
     )
-    return metric
+    return metric, gt_masks
 
         
 def save_metric_for_one_pair(filename, init_image, mask, metric, title, images_dir):
