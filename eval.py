@@ -14,6 +14,8 @@ from utils import show_mask, combine, image2bitmap, get_GTmask_from_filename, \
 from evaluation import *
 from sklearn.metrics import roc_curve, roc_auc_score
 import pickle
+import seaborn as sns
+import pandas as pd
 
 def main(mode : str):
     if mode == 'sd':
@@ -79,33 +81,29 @@ def main(mode : str):
         #     cv2.imwrite(f'{images_dir}/{file}', overlay)
             
         """ get the red and orange mask when prompting the model several times """
-        thresholded_logits_masks = []
-        num_reprompts = 10
-        #images_dir = f'./path_sum_over_logits_{num_reprompts}'
-        images_dir = './accumulated_logits_reprompt20'
-        sam_masks = []
-        for file in tqdm(files):
-            # prompt once
-            multimask_output = True
-            mask_input = None
-            init_image, mask_path, sam_mask, scores, logits, coords, labels = pipeline(file, multimask_output, mask_input)
-            logits_sum = np.zeros((1,256,256))
-            for i in range(num_reprompts):
-                # prompt twice
-                multimask_output = False
-                mask_input = logits[np.argmax(scores), :, :]
-                init_image, mask_path, sam_mask, scores, logits, coords, labels = pipeline(file, multimask_output, mask_input)
-                #sam_mask.save(f'./heatmap/multimask/{i}_{files[0]}')
-                # add logits
-                logits_sum += logits
-            logits_mean = logits_sum * (1/num_reprompts)
-            # prompt last time with accumulated logits
-            mask_input = logits_mean[0]
-            init_image, mask_path, sam_mask, scores, logits, coords, labels = pipeline(file, multimask_output, mask_input)
-            sam_masks.append(sam_mask)
-            combined_image = combine(init_image, sam_mask, coords=coords, labels=labels)
-            combined_image.save(f'{images_dir}/{file}')
-
+        # thresholded_logits_masks = []
+        # num_reprompts = 1
+        # #images_dir = f'./path_sum_over_logits_{num_reprompts}'
+        # images_dir = './threshold_0.65_reprompt_80'
+        # for file in tqdm(files):
+        #     # prompt once
+        #     multimask_output = True
+        #     mask_input = None
+        #     init_image, mask_path, sam_mask, scores, logits, coords, labels = pipeline(file, multimask_output, mask_input)
+        #     logits_sum = np.zeros((1,256,256))
+        #     for i in range(num_reprompts):
+        #         # prompt twice
+        #         multimask_output = False
+        #         mask_input = logits[np.argmax(scores), :, :]
+        #         init_image, mask_path, sam_mask, scores, logits, coords, labels = pipeline(file, multimask_output, mask_input)
+        #         #sam_mask.save(f'./heatmap/multimask/{i}_{files[0]}')
+        #         # add logits
+        #         logits_sum += logits
+        #     logits_mean = np.mean(logits_sum)
+        #     # prompt last time with accumulated logits
+        #     mask_input = logits_mean
+        #     init_image, mask_path, sam_mask, scores, logits, coords, labels = pipeline(file, multimask_output, mask_input)
+        #     
         # 
         # 
         #     # upsample logits to match input image size
@@ -137,12 +135,13 @@ def main(mode : str):
         #     overlay = cv2.addWeighted(init_image_bgr, 0.7,thresholded_logits_bgr, 0.8, 0)
         #     cv2.imwrite(f'{images_dir}/{file}', overlay)
         
-        # compute metric
-        metric, _ = compute_metric(sam_masks, files)
-        print(metric)
-        # save to text file
-        with open('mean_iou.txt', 'a') as f:  # Open the file in append mode
-            f.write(f"\n{metric}_{images_dir}\n")
+
+        # # compute metric
+        # metric, _ = compute_metric(thresholded_logits_masks, files)
+        # print(metric)
+        # # save to text file
+        # with open('mean_iou.txt', 'a') as f:  # Open the file in append mode
+        #     f.write(f"\n{metric}_{images_dir}\n")
             
             
         # """ roc curve for all images """
@@ -212,23 +211,24 @@ def main(mode : str):
         
         
         """ computes and saves metrics for whole dataset """
-        # images_dir = './reprompt1_best_barams'
+        # images_dir = './video/2_ClipSeg_SAM'
         # sam_masks = []
+        # mask_paths = []
         # for file in tqdm(files):
         #     #init_image, mask_path, sam_mask, logits, coords, labels = pipeline(file)
             
-        #     #prompt once
+        #     # prompt once
         #     multimask_output = True
         #     mask_input = None
         #     init_image, mask_path, sam_mask, scores, logits, coords, labels = pipeline(file, multimask_output, mask_input)
             
-        #     # prompt twice
-        #     multimask_output = False
-        #     mask_input = logits[np.argmax(scores), :, :]
-        #     init_image, mask_path, sam_mask, _, logits, coords, labels = pipeline(file, multimask_output, mask_input)
+        #     # # prompt twice
+        #     # multimask_output = False
+        #     # mask_input = logits[np.argmax(scores), :, :]
+        #     # init_image, mask_path, sam_mask, _, logits, coords, labels = pipeline(file, multimask_output, mask_input)
 
-        
-        #     sam_masks.append(sam_mask)
+
+        #     #sam_masks.append(sam_mask)
         #     combined_image = combine(init_image, sam_mask, coords=coords, labels=labels)
         #     # metric_for_one_pair, _ = compute_metric([sam_mask], [file])
         #     # save_metric_for_one_pair_sam(
@@ -239,9 +239,34 @@ def main(mode : str):
         #     #     prompt = 'A bright photo of a road to walk on', 
         #     #     clipseg_mask = mask_path)
         #     combined_image.save(f'{images_dir}/{file}')
+        #     sam_masks.append(sam_mask)
 
         # metric, _ = compute_metric(sam_masks, files)
         # print("metric: ", metric)
+        
+        """ Draw plot """
+        methods = ['ClipSeg', 'ClipSAM', 'ClipSAM reprompt 1', 'ClipSAM reprompt 80']
+        mean_iou_values = [0.78, 0.817, 0.862, 0.864]
+
+        data = {'Methods': methods, 'Mean IoU': mean_iou_values}
+        df = pd.DataFrame(data)
+
+        sns.set_style("whitegrid")
+
+        plt.figure(figsize=(10, 6))
+        sns.barplot(x='Methods', y='Mean IoU', data=df, palette='pastel')
+
+        for i in range(len(mean_iou_values)):
+            plt.text(i, mean_iou_values[i] + 0.01, f'{mean_iou_values[i]:.2f}', ha='center', va='bottom')
+        baseline_iou = mean_iou_values[0]
+        plt.axhline(y=baseline_iou, color='red', linestyle='--')
+        plt.text(-0.2, baseline_iou - 0.05, 'Baseline', color='red')
+        plt.xlabel('Methods', fontsize=12)
+        plt.ylabel('Mean IoU', fontsize=12)
+        plt.title('Mean IoU Comparison: Different Methods', fontsize=14)
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.savefig("./results")
 
 if __name__ == '__main__':
     main('sam')
