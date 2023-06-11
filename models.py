@@ -22,6 +22,7 @@ from clipseg.models.clipseg import CLIPDensePredT
 from utils import bitmap2image, image2bitmap
 from scipy.spatial.distance import cdist
 
+
 class ClipSegBase():
 
     """
@@ -217,24 +218,43 @@ class ClipSegSAM(ClipSegBase):
         self.num_positive_points = positive_samples
         self.num_negative_points = negative_samples
     
-    def __call__(self, file):
+    def __call__(self, file, multimask_output, mask_input):
         image = Image.open(os.path.join(self.data_path,file))
 
         mask_path, init_image = self.promptClipSeg(image=image, word_mask=self.word_mask)
         # mask_obstacle, _ = self.promptClipSeg(image=image, word_mask=self.obstacle_prompt)
         # combined_mask = self.combineObstacleAndPathMasks(mask_path=mask_path, mask_obstacle=mask_obstacle)
 
+        # compute image embeddings
         self.sam.set_image(np.asarray(init_image))
-        coords, labels = self.sample_coords_unfiorm(mask=mask_path)
+        # coords are labeled with foreground (1) and background (0)
+        coords, labels = self.sample_coords_uniform(mask=mask_path)
 
-        mask, _, _ = self.sam.predict(
-            point_coords=coords,
-            point_labels=labels,
-            multimask_output=False
-        )
-
+        # model returns masks, quality predictions for those masks, and low resolution mask logits 
+        # that can be passed to the next iteration of prediction. 
+        # logits are array of shape CxHxW, where C is the number of masks and H=W=256
+        # mask.shape = (1,512,512), logits.shape = (1,256,256)
+        if multimask_output:
+            # prompt first time for multiple masks to get logits and score of masks
+            mask, scores , logits = self.sam.predict( 
+                point_coords=coords,
+                point_labels=labels,
+                multimask_output=True
+            )
+            
+        else:
+            # reprompt with logits
+            scores = 0
+            mask, _, logits = self.sam.predict( 
+                point_coords=coords,
+                point_labels=labels,
+                mask_input = mask_input[None, :, :],
+                multimask_output=False
+            )
+            
+        
         sam_mask = bitmap2image(mask[0])
-        return init_image, mask_path, sam_mask, coords, labels
+        return init_image, mask_path, sam_mask, scores, logits, coords, labels
 
     def sample_coords(self, mask : Image):
         bitmap = image2bitmap(mask)
@@ -278,7 +298,7 @@ class ClipSegSAM(ClipSegBase):
         return coords.astype(np.uint32), labels.astype(np.uint8)
         
         
-    def sample_coords_unfiorm(self, mask : Image):
+    def sample_coords_uniform(self, mask : Image):
         positive_slice = np.argwhere(np.asarray(mask)[:,:,0] != 0)
         negative_slice = np.argwhere(np.asarray(mask)[:,:,0] == 0)
         negative_slice = negative_slice[negative_slice[:,0] >= 250, :]

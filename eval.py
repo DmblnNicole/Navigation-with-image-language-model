@@ -1,10 +1,5 @@
-import cv2
-import evaluate
 from matplotlib import pyplot as plt
-from torchvision import transforms
 import numpy as np
-import timeit
-from PIL import Image
 from tqdm import tqdm
 from models import ClipSegSD, ClipSegSAM
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
@@ -28,7 +23,7 @@ def main(mode : str):
         #compute metric for single mask/ground_truth pairs
         for file in tqdm(files):
             mask_path, mask_obstacle, mask_combined, mask_refined, stable_diffusion_output, init_image = pipeline(file)
-            metric_for_one_pair = compute_metric([mask_refined], [file])
+            metric_for_one_pair, _ = compute_metric([mask_refined], [file])
             save_metric_for_one_pair_with_SD_output(file, init_image, stable_diffusion_output, mask_refined, metric_for_one_pair, title='mask_refined', images_dir=images_dir)
             # masks.append(mask_refined)
             out = combine(init_image, mask_refined)
@@ -40,42 +35,42 @@ def main(mode : str):
         pipeline = ClipSegSAM(
             data_path='./youtube100',
             word_mask='A bright photo of a road to walk on',
-            positive_samples=3,
-            negative_samples=10
+            positive_samples=9,
+            negative_samples=11
         )
         files = pipeline.loadData()
-        images_dir = './metrics/youtube100'
+        """ computes and saves metrics for whole dataset """
+        images_dir = './test'
         sam_masks = []
-
         for file in tqdm(files):
-            init_image, mask_path, sam_mask, coords, labels = pipeline(file)
-            sam_masks.append(sam_mask)
-            combined_image = combine(init_image, sam_mask, coords=coords, labels=labels)
-            metric_for_one_pair = compute_metric([sam_mask], [file])
-            save_metric_for_one_pair_sam(
-                filename = file, 
-                metric = metric_for_one_pair, 
-                combined_image = combined_image, 
-                images_dir = images_dir, 
-                prompt = 'A bright photo of a road to walk on')
-            #out.save(f'{images_dir}/{file}')
 
-        metric = compute_metric(sam_masks, files)
+            #prompt once
+            multimask_output = True
+            mask_input = None
+            init_image, mask_path, sam_mask, scores, logits, coords, labels = pipeline(file, multimask_output, mask_input)
+
+            # prompt twice
+            multimask_output = False
+            mask_input = logits[np.argmax(scores), :, :]
+            init_image, mask_path, sam_mask, _, logits, coords, labels = pipeline(file, multimask_output, mask_input)
+            
+            # save image to folder
+            combined_image = combine(init_image, sam_mask, coords=coords, labels=labels)
+            combined_image.save(f'{images_dir}/{file}')
+            sam_masks.append(sam_mask)
+
+        # compute metric for dataset
+        metric, _ = compute_metric(sam_masks, files)
         print("metric: ", metric)
+        # save metric to text file
+        with open('mean_iou.txt', 'a') as f:
+            f.write(f"{images_dir}: {metric}\n")
+        
 
 if __name__ == '__main__':
     main('sam')
 
-# for i, mask in enumerate(masks):
-    
 
-# compute overall metric for all images in hike    
-# metric = compute_metric(masks, files)
-# # save to text file
-# with open('mean_iou.txt', 'a') as f:  # Open the file in append mode
-#     f.write(f"Metrics for mask_refined (SD with mask_path and seed) and ground truth pairs of hike dataset: {metric}\n")
-
-# print(metric)
 
 
 

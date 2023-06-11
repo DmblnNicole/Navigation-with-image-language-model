@@ -35,7 +35,7 @@ def compute_metric(masks, files):
         num_labels=2, 
         ignore_index=255
     )
-    return metric
+    return metric, gt_masks
 
         
 def save_metric_for_one_pair(filename, init_image, mask, metric, title, images_dir):
@@ -99,31 +99,33 @@ def save_metric_for_one_pair_with_SD_output(filename, init_image, SD_output, mas
     plt.savefig(f"{images_dir}/{filename}")
     plt.close() # Close the figure after saving
     
-def save_metric_for_one_pair_sam(filename, metric, combined_image, images_dir, prompt):
+def save_metric_for_one_pair_sam(filename, metric, combined_image, images_dir, prompt, clipseg_mask):
     gt_mask = get_GTmask_from_filename(filename)
         
-    plt.figure(figsize=(12,6))
-    plt.suptitle(f"mean_iou: {getMetric(metric)[0]}  " 
-                f"mean_acc: {getMetric(metric)[1]}  "
-                f"overall_accuracy: {getMetric(metric)[4]}  "
-                f"per_category_iou: {getMetric(metric)[2]}  "
-                f"per_category_acc: {getMetric(metric)[3]}\n\n" )
-                #f"CligSeg prompt: {prompt}")
-    plt.subplot(1,2,1)
+    plt.figure(figsize=(16, 6), tight_layout=True)
+    plt.suptitle(f"mean_iou: {getMetric(metric)[0]}  "
+                 f"mean_acc: {getMetric(metric)[1]}  "
+                 f"overall_accuracy: {getMetric(metric)[4]}  "
+                 f"per_category_iou: {getMetric(metric)[2]}  "
+                 f"per_category_acc: {getMetric(metric)[3]}\n\n")
+    
+    plt.subplot(1, 3, 1)
+    plt.title('ClipSeg Mask')
+    plt.imshow(clipseg_mask)
+    plt.axis('off')
+    
+    plt.subplot(1, 3, 2)
     plt.title('ClipSeg + SAM')
     plt.imshow(combined_image)
     plt.axis('off')
-    plt.subplot(1,2,2)
+    
+    plt.subplot(1, 3, 3)
     plt.title('Ground Truth')
     plt.imshow(gt_mask)
     plt.axis('off')
+    
     plt.savefig(f"{images_dir}/{filename}")
-    plt.close() # Close the figure after saving
-    
-    
-    
-    
-    
+    plt.close()  # Close the figure after saving
     
     
 
