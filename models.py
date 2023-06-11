@@ -243,7 +243,7 @@ class ClipSegSAM(ClipSegBase):
             )
             
         else:
-            # reprompt with logits, need only single mask
+            # reprompt with logits
             scores = 0
             mask, _, logits = self.sam.predict( 
                 point_coords=coords,

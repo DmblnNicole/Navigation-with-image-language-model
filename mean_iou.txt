@@ -25,6 +25,31 @@
 
 11 SAM no reprompt {'mean_iou': 0.8484157300542464, 'mean_accuracy': 0.913642233937124, 'overall_accuracy': 0.969942398071289, 'per_category_iou': array([0.96729037, 0.72954109]), 'per_category_accuracy': array([0.98333263, 0.84395184])}
 
-12 SAM reprompt {'mean_iou': 0.8718263460350821, 'mean_accuracy': 0.9030753514623674, 'overall_accuracy': 0.9765724945068359, 'per_category_iou': array([0.97459007, 0.76906262]), 'per_category_accuracy': array([0.99405279, 0.81209791])}
+12 SAM reprompt once with logits (2 prompts per image, best params) {'mean_iou': 0.8718263460350821, 'mean_accuracy': 0.9030753514623674, 'overall_accuracy': 0.9765724945068359, 'per_category_iou': array([0.97459007, 0.76906262]), 'per_category_accuracy': array([0.99405279, 0.81209791])}
 
-13 SAM path_sum_over_logits_1_{'mean_iou': 0.8128847761712361, 'mean_accuracy': 0.9498345303579547, 'overall_accuracy': 0.9562136840820312, 'per_category_iou': array([0.95185717, 0.67391238]), 'per_category_accuracy': array([0.95773088, 0.94193818])}
+13 SAM path_sum_over_logits_1_0.5{'mean_iou': 0.8128847761712361, 'mean_accuracy': 0.9498345303579547, 'overall_accuracy': 0.9562136840820312, 'per_category_iou': array([0.95185717, 0.67391238]), 'per_category_accuracy': array([0.95773088, 0.94193818])}
+
+14 SAM path_sum_over_logits_80_0.7{'mean_iou': 0.834591953040516, 'mean_accuracy': 0.8753924725334209, 'overall_accuracy': 0.9691061401367187, 'per_category_iou': array([0.96667494, 0.70250897]), 'per_category_accuracy': array([0.99139467, 0.75939028])}_./path_sum_over_logits_80
+
+Thresholds
+-------------------
+
+15 SAM path_sum_over_logits_20_0.65 {'mean_iou': 0.8610152082591547, 'mean_accuracy': 0.9061370934467861, 'overall_accuracy': 0.9737387847900391, 'per_category_iou': array([0.97148579, 0.75054462]), 'per_category_accuracy': array([0.98981693, 0.82245726])}_./threshold_0.65_reprompt_20
+
+16 SAM path_sum_over_logits_20_0.68 {'mean_iou': 0.8603938435000471, 'mean_accuracy': 0.8951642449912156, 'overall_accuracy': 0.9742842864990234, 'per_category_iou': array([0.97215139, 0.7486363 ]), 'per_category_accuracy': array([0.99310192, 0.79722657])}_./threshold_0.68_reprompt_20
+
+17 SAM path_sum_over_logits_20_0.7 {'mean_iou': 0.8527394591047475, 'mean_accuracy': 0.8827727016246382, 'overall_accuracy': 0.973218994140625, 'per_category_iou': array([0.97107721, 0.73440171]), 'per_category_accuracy': array([0.99473042, 0.77081499])}_./threshold
+
+18 SAM path_sum_over_logits_20_0.75 {'mean_iou': 0.8241038734862465, 'mean_accuracy': 0.8512968872585698, 'overall_accuracy': 0.968377571105957, 'per_category_iou': array([0.96607543, 0.68213232]), 'per_category_accuracy': array([0.99622362, 0.70637015])}_./threshold_0.75_reprompt_20
+
+--------------------
+with BEST PARAMS
+
+method 4 threshold_0.65_reprompt_80_times {'mean_iou': 0.8643296899442545, 'mean_accuracy': 0.9071016352101847, 'overall_accuracy': 0.9745083236694336, 'per_category_iou': array([0.97231787, 0.75634151]), 'per_category_accuracy': array([0.99054009, 0.82366318])}_./threshold_0.65_reprompt_80 time 3:21
+
+method 3 reprompt_once_with_logits {'mean_iou': 0.8625158263261441, 'mean_accuracy': 0.9266591462369076, 'overall_accuracy': 0.9728443145751953, 'per_category_iou': array([0.97036922, 0.75466244]), 'per_category_accuracy': array([0.98382883, 0.86948946])}
+
+method 2 ClipSeg + SAM {'mean_iou': 0.8176003670384169, 'mean_accuracy': 0.8543414707951796, 'overall_accuracy': 0.9663401412963867, 'per_category_iou': array([0.9638549 , 0.67134584]), 'per_category_accuracy': array([0.99297751, 0.71570544])}
+
+method 1 ClipSeg  {'mean_iou': 0.7802466798760542, 'mean_accuracy': 0.8636026934370336, 'overall_accuracy': 0.9538620376586914, 'per_category_iou': array([0.95026992, 0.61022344]), 'per_category_accuracy': array([0.975329  , 0.75187639])}
+./test: {'mean_iou': 0.8800156841127901, 'mean_accuracy': 0.9381551511660589, 'overall_accuracy': 0.9766477966308593, 'per_category_iou': array([0.9744631 , 0.78556827]), 'per_category_accuracy': array([0.98580275, 0.89050755])}

@@ -26,11 +26,9 @@ def show_mask(mask, ax, random_color=False):
 
 def combine(image : Image, clip_mask, sam_mask=None, coords=None, labels=None) -> Image:
     # print(type(clip_mask))
-        
-    new_size = (512, 512)
-    resized_image = image.resize(new_size)
     
-    fig = Figure()
+    #fig = Figure()
+    fig = Figure(figsize=(5.12, 5.12), dpi=100)
     canvas = FigureCanvas(fig)
     ax = fig.gca()
     ax.imshow(image)
@@ -39,18 +37,18 @@ def combine(image : Image, clip_mask, sam_mask=None, coords=None, labels=None) -
     if isinstance(sam_mask, Image.Image):
         sam_mask = show_mask(image2bitmap(sam_mask, dtype=np.bool_), plt, random_color=True)
         ax.imshow(sam_mask)
-    ax.axis('off')
     if isinstance(coords, np.ndarray):
         # print(coords)
         pos_points = coords[labels==1]
         neg_points = coords[labels==0]
         ax.scatter(pos_points[:, 0], pos_points[:, 1], color='green', marker='*', s=50, linewidth=1.25)
         ax.scatter(neg_points[:, 0], neg_points[:, 1], color='red', marker='*', s=50, linewidth=1.25)   
+    ax.axis('off')
     canvas.draw()
     width, height = fig.get_size_inches() * fig.get_dpi() 
     img = np.frombuffer(canvas.tostring_rgb(), dtype=np.uint8).reshape(int(height), int(width), 3)
     img = Image.fromarray(img, 'RGB')
-    return img    
+    return img
 
 def image2bitmap(image : Image, dtype=np.bool_) -> np.array:
     image = np.asarray(image, dtype=dtype)
