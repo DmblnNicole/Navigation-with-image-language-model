@@ -1,0 +1,6 @@
+./test: {'mean_iou': 0.8750261409162612, 'mean_accuracy': 0.9360816740090407, 'overall_accuracy': 0.9755110549926758, 'per_category_iou': array([0.97322911, 0.77682318]), 'per_category_accuracy': array([0.9848888 , 0.88727455])}
+{'mean_iou': 0.871585466873547, 'mean_accuracy': 0.9263667141015028, 'overall_accuracy': 0.9751844024658203, 'per_category_iou': array([0.97293267, 0.77023827]), 'per_category_accuracy': array([0.98679503, 0.8659384 ])}
+{'mean_iou': 0.8880122424487011, 'mean_accuracy': 0.9415090733968193, 'overall_accuracy': 0.9784342193603516, 'per_category_iou': array([0.97640353, 0.79962096]), 'per_category_accuracy': array([0.98721636, 0.89580178])}
+{'mean_iou': 0.9400851961120029, 'mean_accuracy': 0.9761081471159114, 'overall_accuracy': 0.9918125152587891, 'per_category_iou': array([0.99123838, 0.88893201]), 'per_category_accuracy': array([0.99430166, 0.95791464])}
+{'mean_iou': 0.8355321332911401, 'mean_accuracy': 0.908447973270375, 'overall_accuracy': 0.9115848541259766, 'per_category_iou': array([0.85367786, 0.81738641]), 'per_category_accuracy': array([0.9959748 , 0.82092115])}
+{'mean_iou': 0.8202728971582482, 'mean_accuracy': 0.8992907020888063, 'overall_accuracy': 0.9027652740478516, 'per_category_iou': array([0.84143242, 0.79911337]), 'per_category_accuracy': array([0.99623995, 0.80234145])}
