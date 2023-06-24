@@ -1,17 +1,10 @@
 import os
 import re
-import sys
 import uuid
-from io import BytesIO
-from pathlib import Path
 
-import clip
 import cv2
 import numpy as np
-import PIL
-import requests
 import torch
-import transformers
 from diffusers import DiffusionPipeline
 from matplotlib import pyplot as plt
 from PIL import Image
@@ -109,7 +102,7 @@ class ClipSegSD(ClipSegBase):
     Pipeline for integrating Clipseg and Stable Diffusion inpainting
         - Prompts clipseg for path and obstacles
         - Uses stable diffsuion to inpaint a path through a walkable area
-        - Prompt cliseg again for path in the stable diffusion output
+        - Prompt clipseg again for path in the stable diffusion output
     """
 
     def __init__(self, data_path: str, word_mask: str, sd_prompt : str, obstacle_prompt : str) -> None:
@@ -150,10 +143,10 @@ class ClipSegSD(ClipSegBase):
         device = "cuda"
         generator = torch.Generator(device=device)
         seed = 42
-        # same sequence of random numbers is generated every time the code is run
+        # Same sequence of random numbers is generated every time the code is run
         generator.manual_seed(seed)
         latents = torch.randn(
-            # values in the tensor are drawn from a normal distribution with mean 0 and standard deviation 1
+            # Values in the tensor are drawn from a normal distribution with mean 0 and standard deviation 1
             # using the torch.Generator object with fixed seed 42
             (1, 4, 512 // 8, 512 // 8),
             generator = generator,
@@ -227,13 +220,13 @@ class ClipSegSAM(ClipSegBase):
 
         # compute image embeddings
         self.sam.set_image(np.asarray(init_image))
-        # coords are labeled with foreground (1) and background (0)
         coords, labels = self.sample_coords_uniform(mask=mask_path)
 
         # model returns masks, quality predictions for those masks, and low resolution mask logits 
         # that can be passed to the next iteration of prediction. 
         # logits are array of shape CxHxW, where C is the number of masks and H=W=256
         # mask.shape = (1,512,512), logits.shape = (1,256,256)
+        # https://github.com/facebookresearch/segment-anything/blob/main/notebooks/predictor_example.ipynb
         if multimask_output:
             # prompt first time for multiple masks to get logits and score of masks
             mask, scores , logits = self.sam.predict( 
@@ -287,14 +280,6 @@ class ClipSegSAM(ClipSegBase):
             if np.min(d) >= 5: break
         
         coords[self.num_positive_points:,:] = negative_points
-            
-        # while impact < self.num_positive_points + self.num_negative_points:
-        #     point = np.random.randn(1,2).astype(np.uint32)*neg_std + mean
-        #     if point not in positive_slice:
-        #         point = np.clip(point, 0, 512)
-        #         coords[impact, :] = point
-        #         impact += 1 
-
         return coords.astype(np.uint32), labels.astype(np.uint8)
         
         
@@ -318,5 +303,6 @@ class ClipSegSAM(ClipSegBase):
         coords[:,1], coords[:,0] = points[:,0], points[:,1]
         labels = np.hstack([np.ones(self.num_positive_points), np.zeros(self.num_negative_points)])
         return coords.astype(np.uint32), labels.astype(np.uint8)
+    
     
     
