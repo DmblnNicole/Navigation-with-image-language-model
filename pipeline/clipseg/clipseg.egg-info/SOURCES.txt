@@ -1,0 +1,10 @@
+LICENSE
+README.md
+setup.py
+clipseg.egg-info/PKG-INFO
+clipseg.egg-info/SOURCES.txt
+clipseg.egg-info/dependency_links.txt
+clipseg.egg-info/requires.txt
+clipseg.egg-info/top_level.txt
+models/clipseg.py
+models/vitseg.py

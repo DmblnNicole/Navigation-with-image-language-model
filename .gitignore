@@ -3,3 +3,4 @@
 /segments
 *__pycache__*
 *.pyc
+/build
