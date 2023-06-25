@@ -165,7 +165,7 @@ def save_metric_for_one_pair_sam(filename, metric, combined_image, images_dir, p
     plt.close()  
     
 
-def show_mask(mask, ax, random_color=False):
+def show_mask(mask, random_color=False):
     if random_color:
         color = np.concatenate([np.random.random(3), np.array([0.6])], axis=0)
     else:

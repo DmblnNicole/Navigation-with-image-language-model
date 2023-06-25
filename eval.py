@@ -15,18 +15,18 @@ def main(mode : str, visualize: bool = True):
         files = pipeline.loadData()
         images_dir = './test'
         GT_dir = './data/GT/GT_hike'
-        masks_refined = []
+        masks = []
 
         #compute metric for single mask/ground_truth pairs
         for file in tqdm(files[:2]):
-            _, _, _, mask_refined, stable_diffusion_output, init_image = pipeline(file)
-            masks_refined.append(masks_refined)
-            #metric_for_one_pair, _ = compute_metric(GT_dir, [mask_refined], [file])
-            #save_metric_for_one_pair_with_SD_output(file, init_image, stable_diffusion_output, mask_refined, metric_for_one_pair, title='mask_refined', images_dir=images_dir)
-            out = combine(init_image, mask_refined)
-            out.save(f'{images_dir}/{file}')
+            _, _, _, final_mask, stable_diffusion_output, init_image= pipeline(file)
+            masks.append(final_mask)
+            if visualize:
+                # visualize final mask that is obtained by prompting ClipSeg with stable_diffusion_output
+                out = combine(init_image, final_mask)
+                out.save(f'{images_dir}/{file}')
         # compute metric for dataset
-        metric, _ = compute_metric(GT_dir, masks_refined, files)
+        metric, _ = compute_metric(GT_dir, masks, files)
         print("metric: ", metric)
         with open('metrics.txt', 'a') as f:
             f.write(f"Stable Diffusion: {metric}\n")
@@ -73,7 +73,7 @@ def main(mode : str, visualize: bool = True):
         
 
 if __name__ == '__main__':
-    main('sd', visualize=True)
+    main('sam', visualize=True)
 
 
 
