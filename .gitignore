@@ -1,7 +1,6 @@
-/processed_hike
-/double_processed_hike
 /checkpoints
 .DS_Store
 /segments
 *__pycache__*
 *.pyc
+/build
