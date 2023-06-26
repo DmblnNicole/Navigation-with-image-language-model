@@ -32,7 +32,7 @@ class ClipSegBase():
         """ Initialize pretrained clipseg model """
         self.clipseg_model = CLIPDensePredT(version='ViT-B/16', reduce_dim=64)
         self.clipseg_model.eval()
-        self.clipseg_model.load_state_dict(torch.load('weights/rd64-uni.pth', map_location=torch.device('cuda')), strict=False)
+        self.clipseg_model.load_state_dict(torch.load('../weights/rd64-uni.pth', map_location=torch.device('cuda')), strict=False)
     
     def preprocess(self):
         """ Preprocess image for ClipSeg"""
@@ -206,7 +206,7 @@ class ClipSegSAM(ClipSegBase):
 
     def __init__(self, data_path: str, word_mask: str, positive_samples : int, negative_samples : int) -> None:
         super().__init__(data_path, word_mask)
-        sam = sam_model_registry["vit_h"](checkpoint='checkpoints/sam_vit_h_4b8939.pth').to(self.device)
+        sam = sam_model_registry["vit_h"](checkpoint='../checkpoints/sam_vit_h_4b8939.pth').to(self.device)
         self.sam = SamPredictor(sam)
         self.num_positive_points = positive_samples
         self.num_negative_points = negative_samples

@@ -2,8 +2,8 @@ from setuptools import setup, find_packages
 
 setup(
     name='navigation_with_image_language_model',
-    version='1.0',
-    description='ClipSeg and StableDiffusion or ClipSeg and SegmentAnything are utilized in a pipeline to prompt an image for a path',
+    version='2.0',
+    description='The package provides a pipeline that utilizes models like ClipSeg and StableDiffusion or ClipSeg and SegmentAnything to prompt an image for a path.',
     packages=find_packages(),
     install_requires=[
         'accelerate==0.18.0',
