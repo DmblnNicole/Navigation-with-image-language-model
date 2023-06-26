@@ -15,7 +15,7 @@ def main(mode : str, visualize: bool):
 
         files = pipeline.loadData()
         if visualize:
-            images_dir = '../output'
+            images_dir = '/output'
             if not os.path.exists(images_dir):
                 os.makedirs(images_dir)
             else:
@@ -49,7 +49,7 @@ def main(mode : str, visualize: bool):
         """ computes and saves metrics for whole dataset """
         files = pipeline.loadData()
         if visualize:
-            images_dir = '../output'
+            images_dir = '/output'
             if not os.path.exists(images_dir):
                 os.makedirs(images_dir)
             else:
@@ -84,7 +84,7 @@ def main(mode : str, visualize: bool):
         
 
 if __name__ == '__main__':
-    main('sd', visualize=True)
+    main('sam', visualize=False)
 
 
 
