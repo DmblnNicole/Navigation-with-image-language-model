@@ -14,7 +14,7 @@ Original image          |  Final mask
 
 ## Installation
 
-1. Clone the repository locally and pip install navigation-with-image-language-model with
+1. Clone the repository locally and pip install navigate-with-image-language-model with
    
   ```
   git clone git@github.com:DmblnNicole/Navigation-with-image-language-model.git
