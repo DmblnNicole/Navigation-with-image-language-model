@@ -2,8 +2,9 @@ import numpy as np
 from tqdm import tqdm
 from models import ClipSegSD, ClipSegSAM
 from utils import *
+import os
 
-def main(mode : str, visualize: bool = True):
+def main(mode : str, visualize: bool):
     if mode == 'sd':
         pipeline =  ClipSegSD(
             data_path='../data/images/hike/edge', 
@@ -13,7 +14,12 @@ def main(mode : str, visualize: bool = True):
         )
 
         files = pipeline.loadData()
-        images_dir = '../test'
+        if visualize:
+            images_dir = '../output'
+            if not os.path.exists(images_dir):
+                os.makedirs(images_dir)
+            else:
+                print("The folder already exists.")
         GT_dir = '../data/GT/GT_hike'
         masks = []
 
@@ -42,7 +48,12 @@ def main(mode : str, visualize: bool = True):
         )
         """ computes and saves metrics for whole dataset """
         files = pipeline.loadData()
-        images_dir = '../test'
+        if visualize:
+            images_dir = '../output'
+            if not os.path.exists(images_dir):
+                os.makedirs(images_dir)
+            else:
+                print("The folder already exists.")
         GT_dir = '../data/GT/GT_hike'
         sam_masks = []
         for file in tqdm(files):
@@ -73,7 +84,7 @@ def main(mode : str, visualize: bool = True):
         
 
 if __name__ == '__main__':
-    main('sam', visualize=False)
+    main('sd', visualize=True)
 
 
 
