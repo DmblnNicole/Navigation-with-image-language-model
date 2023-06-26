@@ -43,8 +43,9 @@ Change text prompts and upload your own dataset.
 data_path='../data/images/hike/edge'
 ```
 - Upload ground truth masks and specify path
+```
 GT_dir = '../data/GT/GT_hike'
-
+```
 - Choose your text prompt
 ```
 word_mask='A bright photo of a road to walk on'
