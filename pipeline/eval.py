@@ -84,7 +84,7 @@ def main(mode : str, visualize: bool):
         
 
 if __name__ == '__main__':
-    main('sd', visualize=True)
+    main('sam', visualize=True)
 
 
 
