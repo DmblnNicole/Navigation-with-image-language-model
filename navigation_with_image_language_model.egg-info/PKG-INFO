@@ -1,4 +1,0 @@
-Metadata-Version: 2.1
-Name: navigation-with-image-language-model
-Version: 1.0
-Summary: ClipSeg and StableDiffusion or ClipSeg and SegmentAnything are utilized in a pipeline to prompt an image for a path

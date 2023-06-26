@@ -6,19 +6,19 @@ from utils import *
 def main(mode : str, visualize: bool = True):
     if mode == 'sd':
         pipeline =  ClipSegSD(
-            data_path='./data/images/hike/edge', 
+            data_path='../data/images/hike/edge', 
             word_mask='A bright photo of a path through the forest',
             sd_prompt='A bright picture of a narrow footpath',
             obstacle_prompt='A dull photo of bulky or voluminous obstacles that are bigger than 50 centimeters'
         )
 
         files = pipeline.loadData()
-        images_dir = './test'
-        GT_dir = './data/GT/GT_hike'
+        images_dir = '../test'
+        GT_dir = '../data/GT/GT_hike'
         masks = []
 
         #compute metric for single mask/ground_truth pairs
-        for file in tqdm(files[:2]):
+        for file in tqdm(files):
             _, _, _, final_mask, stable_diffusion_output, init_image= pipeline(file)
             masks.append(final_mask)
             if visualize:
@@ -35,15 +35,15 @@ def main(mode : str, visualize: bool = True):
         positive = range(2,10)
         negative = range(3,15)
         pipeline = ClipSegSAM(
-            data_path='./data/images/hike/edge',
+            data_path='../data/images/hike/edge',
             word_mask='A bright photo of a road to walk on',
             positive_samples=9,
             negative_samples=11
         )
         """ computes and saves metrics for whole dataset """
         files = pipeline.loadData()
-        images_dir = './test'
-        GT_dir = './data/GT/GT_hike'
+        images_dir = '../test'
+        GT_dir = '../data/GT/GT_hike'
         sam_masks = []
         for file in tqdm(files):
 
@@ -73,7 +73,7 @@ def main(mode : str, visualize: bool = True):
         
 
 if __name__ == '__main__':
-    main('sam', visualize=True)
+    main('sam', visualize=False)
 
 
 
