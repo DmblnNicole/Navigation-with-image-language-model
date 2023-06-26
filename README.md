@@ -21,11 +21,11 @@ Original image          |  Final mask
   pip install -e .
  ```
   
-2. Download the checkpoint for Segment Anything model type vit_h here: [ViT-H SAM model](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth) and save it in the root folder of the github repository.
+2. Download the checkpoint for Segment Anything model type vit_h here: [ViT-H SAM model](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth) and save it in the root folder of the repository.
 
 ## Getting started
 
-The file `eval.py` runs the pipeline and contains all adjustable information like textprompts, paths to image data and the model types.
+The file `pipeline/eval.py` runs the pipeline and contains all adjustable information like textprompts, paths to image data and the model types.
 
 - Choose your model type and specify if output masks should be visualized.
 ```
