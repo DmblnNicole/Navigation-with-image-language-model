@@ -50,3 +50,9 @@ GT_dir = '../data/GT/GT_hike'
 ```
 word_mask='A bright photo of a road to walk on'
 ```
+## Experimental Results
+The pipeline, comprising ClipSeg and Segment Anything, was evaluated on a dataset extracted from YouTube videos as shown above. This dataset consists of images with visible paths and high contrast. While the primary objective is to segment already visible paths with ClipSeg and Segment Anything, the method also produces results for images of forest terrain where no clear path is visible.
+
+Final Mask         |  Final mask
+:-------------------------:|:-------------------------:
+![wide_angle_camera_front_1677756688_627165488](https://github.com/DmblnNicole/Navigation-with-image-language-model/assets/75450536/d723579e-1f40-496f-a3d9-019c1a834ffd)|![wide_angle_camera_front_1677756728_599394188](https://github.com/DmblnNicole/Navigation-with-image-language-model/assets/75450536/b4f403fc-6562-48a7-914d-1031507d70c6)
