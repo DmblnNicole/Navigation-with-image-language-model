@@ -14,14 +14,14 @@ Original image          |  Final mask
 
 ## Installation
 
-1. Clone the repository locally and pip install navigate-with-image-language-model with
+1. Clone the repository locally and pip install `navigate-with-image-language-model` with
    
   ```
   git clone git@github.com:DmblnNicole/Navigation-with-image-language-model.git
   pip install -e .
  ```
   
-2. Download the checkpoint for Segment Anything model typ vit_h here: [ViT-H SAM model](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth).
+2. Download the checkpoint for Segment Anything model type vit_h here: [ViT-H SAM model](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth).
 
 ## Getting started
 
@@ -32,7 +32,7 @@ The file `eval.py` runs the pipeline and contains all adjustable information lik
 if __name__ == '__main__':
     main('sam', visualize=False)
 ```
-A new folder called ` test ` will save the masks if `visualize==True`.
+A new folder called ` output ` will save the masks if `visualize==True`.
 
 ### Optional
 
