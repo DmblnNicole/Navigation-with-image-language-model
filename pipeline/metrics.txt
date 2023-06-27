@@ -1,0 +1,1 @@
+SAM: {'mean_iou': 0.7764884065355909, 'mean_accuracy': 0.8629592692188917, 'overall_accuracy': 0.8816252946853638, 'per_category_iou': array([0.82789005, 0.72508676]), 'per_category_accuracy': array([0.9708345 , 0.75508404])}
