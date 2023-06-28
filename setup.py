@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='navigate_with_image_language_model',
-    version='1.1',
+    version='1.2',
     python_requires=">=3.9",
     description='The package provides a pipeline that utilizes models like ClipSeg and StableDiffusion or ClipSeg and SegmentAnything to prompt an image for a path.',
     packages=find_packages(),
