@@ -14,25 +14,32 @@ Original image          |  Final mask
 
 ## Installation
 
-1. Clone the repository locally and pip install navigation-with-image-language-model with
+1. Clone the repository locally and pip install `navigate-with-image-language-model` with:
    
   ```
-  git clone git@github.com:DmblnNicole/Navigation-with-image-language-model.git
+  git clone https://github.com/DmblnNicole/Navigation-with-image-language-model.git
   pip install -e .
  ```
-  
-2. Download the checkpoint for Segment Anything model typ vit_h here: [ViT-H SAM model](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth).
+
+2. Install Dependecies
+
+```
+pip install git+https://github.com/openai/CLIP.git
+pip install git+https://github.com/facebookresearch/segment-anything.git
+```
+
+3. Download the checkpoint for Segment Anything model type vit_h here: [ViT-H SAM model](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth) and save it in the root folder of the repository.
 
 ## Getting started
 
-The file `eval.py` runs the pipeline and contains all adjustable information like textprompts, paths to image data and the model types.
+The file `pipeline/eval.py` runs the pipeline and contains all adjustable information like textprompts, paths to image data and the model types.
 
 - Choose your model type and specify if output masks should be visualized.
 ```
 if __name__ == '__main__':
     main('sam', visualize=False)
 ```
-A new folder called ` test ` will save the masks if `visualize==True`.
+A new folder called ` output ` will save the masks if `visualize==True`.
 
 ### Optional
 
@@ -50,3 +57,9 @@ GT_dir = '../data/GT/GT_hike'
 ```
 word_mask='A bright photo of a road to walk on'
 ```
+## Experimental Results
+The pipeline, comprising ClipSeg and Segment Anything, was evaluated on a dataset extracted from YouTube videos as shown above. This dataset consists of images with visible paths and high contrast. While the primary objective is to segment already visible paths with ClipSeg and Segment Anything, the method also produces results for images of forest terrain where no clear path is visible.
+
+Final Mask         |  Final mask
+:-------------------------:|:-------------------------:
+![wide_angle_camera_front_1677756688_627165488](https://github.com/DmblnNicole/Navigation-with-image-language-model/assets/75450536/d723579e-1f40-496f-a3d9-019c1a834ffd)|![wide_angle_camera_front_1677756728_599394188](https://github.com/DmblnNicole/Navigation-with-image-language-model/assets/75450536/b4f403fc-6562-48a7-914d-1031507d70c6)
