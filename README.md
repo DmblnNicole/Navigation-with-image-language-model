@@ -5,12 +5,15 @@ This project presents a pipeline for robot navigation that uses the [ClipSeg](ht
 ### ClipSeg and Segment Anything
 Original image          |  Final mask
 :-------------------------:|:-------------------------:
-![orig_youtube](https://github.com/DmblnNicole/Navigation-with-image-language-model/assets/75450536/e2dfbc2d-6b7b-4bae-9d0a-385536ee30aa)  |  ![SAM_youtube100](https://github.com/DmblnNicole/Navigation-with-image-language-model/assets/75450536/a9ddc143-6634-490c-8c26-41313c7cc3cd)
+![orig_youtube](https://github.com/DmblnNicole/Navigation-with-image-language-model/assets/75450536/530166e2-d0d0-4143-bc31-f9889bd933a0)  |  ![img_000238](https://github.com/DmblnNicole/Navigation-with-image-language-model/assets/75450536/604d702c-db51-41b0-a52d-ef8ad8939702)
+
 
 ### ClipSeg and Stable Diffusion
 Original image          |  Final mask
 :-------------------------:|:-------------------------:
-![orig_hike](https://github.com/DmblnNicole/Navigation-with-image-language-model/assets/75450536/3df134b8-c2cc-48c9-91cd-e5e32a6b5db8) |  ![sd_final_mask_hike](https://github.com/DmblnNicole/Navigation-with-image-language-model/assets/75450536/85cc2749-e326-4653-a8a0-672d0de74649)
+![orig_hike](https://github.com/DmblnNicole/Navigation-with-image-language-model/assets/75450536/de5ae4d9-0daa-4235-af16-448d0810cddc) | ![sd_final_mask_hike](https://github.com/DmblnNicole/Navigation-with-image-language-model/assets/75450536/7188d901-e523-4b54-ba49-8cdbb3a7f69d)
+
+
 
 ## Installation
 
@@ -62,4 +65,5 @@ The pipeline, comprising ClipSeg and Segment Anything, was evaluated on a datase
 
 Final Mask         |  Final mask
 :-------------------------:|:-------------------------:
-![wide_angle_camera_front_1677756688_627165488](https://github.com/DmblnNicole/Navigation-with-image-language-model/assets/75450536/d723579e-1f40-496f-a3d9-019c1a834ffd)|![wide_angle_camera_front_1677756728_599394188](https://github.com/DmblnNicole/Navigation-with-image-language-model/assets/75450536/b4f403fc-6562-48a7-914d-1031507d70c6)
+![wide_angle_camera_front_1677756688_627165488](https://github.com/DmblnNicole/Navigation-with-image-language-model/assets/75450536/8cfd3f22-d62b-4416-8c85-a08fdf176640)|![wide_angle_camera_front_1677756728_599394188](https://github.com/DmblnNicole/Navigation-with-image-language-model/assets/75450536/09458801-efea-406a-a087-099c01349862)
+
